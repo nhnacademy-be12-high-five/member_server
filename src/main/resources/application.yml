@@ -13,6 +13,9 @@ spring:
       discovery:
         enabled: true
         service-id: config-server
+      retry:
+        initial-interval: 2000  # 2초 간격
+        max-attempts: 30        # 30번 (총 1분)
       fail-fast: true
 
 eureka:
