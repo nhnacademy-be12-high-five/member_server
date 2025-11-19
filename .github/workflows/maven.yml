@@ -10,7 +10,7 @@ jobs:
   call-reusable-deploy:
     uses: nhnacademy-be12-high-five/.github/.github/workflows/shared-workflow.yml@feat/cicd
     with:
-      project-key: member-service
+      project-key: team5-member-service
       docker-image: fbxogns123/member-server
       container-name: member_server
       maven-args: "-B -DskipTests"
