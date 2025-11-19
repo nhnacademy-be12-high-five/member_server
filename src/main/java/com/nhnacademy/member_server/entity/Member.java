@@ -1,44 +1,47 @@
 package com.nhnacademy.member_server.entity;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.Date;
 
 
-//TODO#1-1 먼저 제일 의존성이 적은 entity + repository 생성
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
 @Entity
+@Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "Member")
 public class Member {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    @Column(name = "member_id")
+    private Long id;
 
     @NotNull
-    @Column(name = "login_id")
+    @Column(name = "login_id", unique = true, nullable = false, length = 50)
     private String loginId;
 
     @Setter
     @NotNull
+    @Column(nullable = false, length = 50)
     private String name;
 
     @Setter
     @NotNull
+    @Column(nullable = false)
     private String password;
 
     @Setter
     @NotNull
+    @Column(nullable = false, length = 20)
     private String phone;
 
     @Setter
     @NotNull
+    @Column(nullable = false, length = 100)
     private String email;
 
     @Setter
@@ -48,15 +51,16 @@ public class Member {
     @Setter
     @NotNull
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
-
+    private Timestamp lastLoginAt;
 
     @Setter
     @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private Status status;
 
     @Setter
+    @Column(name = "provider_id")
     private String providerId;
 
     @Setter
@@ -64,14 +68,15 @@ public class Member {
 
     @Setter
     @NotNull
+    @Column(nullable = false, length = 20)
     private String role;
 
     @Setter
     @NotNull
-    @Column(name = "current_point")
+    @Column(name = "current_point", nullable = false)
     private long currentPoint;
 
-    @ManyToOne
-    @JoinColumn(name = "grade_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "grade_id", nullable = false)
     private Grade grade;
 }

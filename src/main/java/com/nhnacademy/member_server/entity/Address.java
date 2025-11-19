@@ -1,30 +1,33 @@
 package com.nhnacademy.member_server.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
-@NoArgsConstructor
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Address {
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+
     @Id
-    private long id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "address_id")
+    private Long id;
 
     @Setter
+    @Column(length = 50)
     private String alias;
 
     @Setter
-    @Column(name = "road_address")
+    @Column(name = "road_address", length = 255)
     private String roadAddress;
 
     @Setter
-    @Column(name = "detail_address")
+    @Column(name = "detail_address", length = 255)
     private String detailAddress;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
     private Member member;
 }
