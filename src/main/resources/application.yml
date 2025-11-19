@@ -1,21 +1,11 @@
 spring:
   application:
     name: member_server
-  
-  profiles:
-    active: dev
-  
   config:
-    import: "configserver:"
-  
-  cloud:
-    config:
-      discovery:
-        enabled: true
-        service-id: config-server
-      fail-fast: true
+
+    import: "optional:configserver:"
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
