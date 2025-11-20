@@ -1,20 +1,30 @@
 package com.nhnacademy.member_server.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
+import com.fasterxml.jackson.annotation.JsonValue;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
 
 @Entity
+@Data
+@RequiredArgsConstructor
 public class CartItem {
+
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private int quantity;
 
     @ManyToOne
-    private Cart cart_id;
+    private Cart cartId;
 
-    // @ManyToOne
-    // private Book book_id;
+    private Long bookId;
+
+    public CartItem(Long bookId, int quantity){
+        this.bookId = bookId;
+        this.quantity = quantity;
+    }
 
 }

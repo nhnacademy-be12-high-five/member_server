@@ -1,0 +1,8 @@
+### 책 추가 POST 요청
+POST localhost:9002/api/cart/items
+Content-Type: application/json
+
+{
+  "bookId": 1,
+  "quantity": 1
+}
