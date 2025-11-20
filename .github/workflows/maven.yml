@@ -1,13 +1,13 @@
-name: Member CI/CD
+name: Member Service CI/CD
 
 on:
   push:
-    branches: [ "main", "dev"]
+    branches: [ "main", "dev" ]
   pull_request:
-    branches: [ "main", "dev"]
+    branches: [ "main", "dev" ]
 
 jobs:
-  call-reusable-deploy:
+  ci-deploy:
     uses: nhnacademy-be12-high-five/.github/.github/workflows/shared-workflow.yml@feat/cicd
     with:
       project-key: team5-member-service
