@@ -9,6 +9,7 @@ import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.feign.BookFeignClient;
 import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
+import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class CartServiceImpl implements CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final BookFeignClient bookFeignClient;
+    private final MemberRepository memberRepository;
 
     @Override
     @Transactional(readOnly = true) // 성능 최적화, 더티 체킹 과정을 생략함 -> 어차피 수정안하니까 스냅샷 안만듬 변경 감지 x
@@ -104,7 +106,7 @@ public class CartServiceImpl implements CartService {
     private Cart resolveCart(Long memberId, String guestId) {
         // 카트를 찾고 만약에 없다면 회원아이디로 카트를 생성해줌
         if (memberId != null) {
-            return cartRepository.findByMemberId(memberId)
+            return cartRepository.findByMember_Id(memberId)
                     .orElseGet(() -> createMemberCart(memberId));
         }
 
@@ -125,10 +127,7 @@ public class CartServiceImpl implements CartService {
 
     // 멤버의 카트를 생성해주는 함수
     private Cart createMemberCart(Long memberId) {
-        // ID만 가지고 있는 상태에서, DB 조회 없이 프록시(가짜 객체)만 딱 따옵니다.
-        // 성능상 SELECT 쿼리가 안 나가서 효율적입니다.
         Member memberRef = memberRepository.getReferenceById(memberId);
-        // 만약 getReferenceById가 없으면 findById(memberId).orElseThrow() 쓰셔도 됩니다.
 
         Cart newCart = new Cart(memberRef); // Member 객체를 넣어줌!
         return cartRepository.save(newCart);
@@ -137,7 +136,7 @@ public class CartServiceImpl implements CartService {
     // 단순 조회용 (생성 X)
     private Optional<Cart> findCart(Long memberId, String guestId) {
         if (memberId != null) {
-            return cartRepository.findByMemberId(memberId);
+            return cartRepository.findByMember_Id(memberId);
         }
         if (guestId != null) {
             try {
