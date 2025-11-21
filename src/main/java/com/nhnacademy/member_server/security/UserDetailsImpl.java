@@ -18,14 +18,14 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        String role = member.getRole();
+        String roleName = member.getRole().name();
 
-        if (!role.startsWith("ROLE_")) {
-            role = "ROLE_" + role;
+        if (!roleName.startsWith("ROLE_")) {
+            roleName = "ROLE_" + roleName;
         }
 
         Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        authorities.add(new SimpleGrantedAuthority(role));
+        authorities.add(new SimpleGrantedAuthority(roleName));
         return authorities;
     }
 

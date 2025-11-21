@@ -4,6 +4,7 @@ import com.nhnacademy.member_server.dto.request.SignupRequest;
 import com.nhnacademy.member_server.dto.response.TokenDto;
 import com.nhnacademy.member_server.entity.Grade;
 import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.entity.Status;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
 import com.nhnacademy.member_server.repository.GradeRepository;
@@ -51,7 +52,7 @@ public class AuthService {
         member.setLastLoginAt(LocalDateTime.now());
 
         Long userId = userDetails.getMember().getId();
-        String role = userDetails.getMember().getRole();
+        Role role = userDetails.getMember().getRole();
 
         String accessToken = jwtUtil.createAccessToken(userId, role);
         String refreshToken = jwtUtil.createRefreshToken(userId);
@@ -84,7 +85,7 @@ public class AuthService {
                 .birthDate(request.getBirthDate())
                 .lastLoginAt(LocalDateTime.now())
                 .status(Status.ACTIVE)
-                .role("ROLE_USER")
+                .role(Role.USER)
                 .currentPoint(0L)
                 .grade(basicGrade)
                 .build();

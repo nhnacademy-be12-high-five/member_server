@@ -1,6 +1,7 @@
 package com.nhnacademy.member_server.global.jwt;
 
 
+import com.nhnacademy.member_server.entity.Role;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -28,13 +29,13 @@ public class JwtUtil {
     }
 
     //여기서는 Pk로 넣어줘야함 그래야 토큰에서 빼와서 x user id로 검증
-    public String createAccessToken(Long userId, String role) {
+    public String createAccessToken(Long userId, Role role) {
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + accessExpirationTime);
 
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .claim("ROLE_", role)
+                .claim("role", role.name())
                 .setIssuedAt(now)
                 .setExpiration(expirationDate)
                 .signWith(secretKey, SignatureAlgorithm.HS256)

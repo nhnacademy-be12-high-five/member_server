@@ -68,9 +68,9 @@ public class Member {
     private String provider;
 
     @Setter
-    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String role;
+    private Role role;
 
     @Setter
     @NotNull
@@ -81,8 +81,5 @@ public class Member {
     @JoinColumn(name = "grade_id", nullable = false)
     private Grade grade;
 
-    public void setLastLoginAt(LocalDateTime lastLoginAt) {
-        this.lastLoginAt = lastLoginAt;
-    }
 
 }
