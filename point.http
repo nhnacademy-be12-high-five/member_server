@@ -1,0 +1,32 @@
+### 1. 포인트 사용 (차감) 테스트
+# 기대 결과: 200 OK / DB 잔액 9000원
+POST http://localhost:9000/internal/points/use
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "amount": 1000,
+  "description": "테스트용 포인트 사용"
+}
+
+### 2. 포인트 환불 (롤백) 테스트
+# 기대 결과: 200 OK / DB 잔액 다시 10000원
+POST http://localhost:9000/internal/points/revert
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "amount": 1000,
+  "description": "테스트용 포인트 환불"
+}
+
+### 3. 잔액 부족 테스트 (예외 발생)
+# 기대 결과: 500 Error (잔액 부족 메시지)
+POST http://localhost:9000/internal/points/use
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "amount": 9999999,
+  "description": "테스트용 포인트 사용"
+}
