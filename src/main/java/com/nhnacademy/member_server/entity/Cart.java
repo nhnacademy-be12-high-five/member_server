@@ -1,9 +1,6 @@
 package com.nhnacademy.member_server.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,9 +15,11 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long memberId;
+    @OneToOne(fetch = FetchType.LAZY) // 지연 로딩 필수!
+    @JoinColumn(name = "member_id")
+    private Member member;
 
-    public Cart(Long memberId){
-        this.memberId = memberId;
+    public Cart(Member member) {
+        this.member = member;
     }
 }

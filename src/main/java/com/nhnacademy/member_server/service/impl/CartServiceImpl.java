@@ -5,6 +5,7 @@ import com.nhnacademy.member_server.dto.CartDetailResponse;
 import com.nhnacademy.member_server.dto.CartListResponse;
 import com.nhnacademy.member_server.entity.Cart;
 import com.nhnacademy.member_server.entity.CartItem;
+import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.feign.BookFeignClient;
 import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
@@ -104,7 +105,7 @@ public class CartServiceImpl implements CartService {
         // 카트를 찾고 만약에 없다면 회원아이디로 카트를 생성해줌
         if (memberId != null) {
             return cartRepository.findByMemberId(memberId)
-                    .orElseGet(() -> cartRepository.save(new Cart(memberId)));
+                    .orElseGet(() -> createMemberCart(memberId));
         }
 
         // 비회원: 쿠키 ID로 조회 시도
@@ -120,6 +121,17 @@ public class CartServiceImpl implements CartService {
 
         // 쿠키도 없고 회원도 아니면 새로 생성
         return cartRepository.save(new Cart(null));
+    }
+
+    // 멤버의 카트를 생성해주는 함수
+    private Cart createMemberCart(Long memberId) {
+        // ID만 가지고 있는 상태에서, DB 조회 없이 프록시(가짜 객체)만 딱 따옵니다.
+        // 성능상 SELECT 쿼리가 안 나가서 효율적입니다.
+        Member memberRef = memberRepository.getReferenceById(memberId);
+        // 만약 getReferenceById가 없으면 findById(memberId).orElseThrow() 쓰셔도 됩니다.
+
+        Cart newCart = new Cart(memberRef); // Member 객체를 넣어줌!
+        return cartRepository.save(newCart);
     }
 
     // 단순 조회용 (생성 X)
