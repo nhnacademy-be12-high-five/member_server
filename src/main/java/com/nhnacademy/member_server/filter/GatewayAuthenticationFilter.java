@@ -22,6 +22,8 @@ public class GatewayAuthenticationFilter extends OncePerRequestFilter {
         String userId = request.getHeader("X-User-Id");
         String role = request.getHeader("X-Role");
 
+        // 헤더에 사용자 ID가 있다면 권한과 가짜 유저 객체 생성해서 인증 토큰을 만들어 그리고 저장소에 '로그인 된 사람'이라고 등록시킴
+        // 서비스 코드에서 유저 정보 쉽게 꺼내 쓰게 하기 위해서 설정함
         if(userId != null && !userId.isEmpty()){
             SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role != null ? role : "ROLE_USER");
             User principal = new User(userId, "", Collections.singleton(authority));

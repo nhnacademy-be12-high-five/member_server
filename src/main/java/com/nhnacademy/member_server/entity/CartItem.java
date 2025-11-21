@@ -18,13 +18,14 @@ public class CartItem {
     private int quantity;
 
     @ManyToOne
-    private Cart cartId;
+    private Cart cart;
 
     private Long bookId;
 
-    public CartItem(Long bookId, int quantity){
+    public CartItem(Long bookId, int quantity, Cart cart){
         this.bookId = bookId;
         this.quantity = quantity;
+        this.cart = cart;
     }
 
 }

@@ -1,6 +1,5 @@
 package com.nhnacademy.member_server.service.impl;
 
-import com.nhnacademy.member_server.cache.BookCacheService;
 import com.nhnacademy.member_server.dto.CartAddRequest;
 import com.nhnacademy.member_server.dto.CartDetailResponse;
 import com.nhnacademy.member_server.dto.CartListResponse;
@@ -10,15 +9,8 @@ import com.nhnacademy.member_server.feign.BookFeignClient;
 import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
 import com.nhnacademy.member_server.service.CartService;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
@@ -31,148 +23,117 @@ public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final BookCacheService bookCacheService;
+    private final BookFeignClient bookFeignClient;
 
     @Override
-    public CartListResponse getCartItemList(HttpServletRequest request){
-        Cart cart = null;
-        Long memberId = getMemberId();
+    @Transactional(readOnly = true) // 성능 최적화, 더티 체킹 과정을 생략함 -> 어차피 수정안하니까 스냅샷 안만듬 변경 감지 x
+    public CartListResponse getCartItemList(Long memberId, String guestId) {
+        Cart cart = findCart(memberId, guestId).orElse(null);
 
-        if(memberId != null){
-            cart = cartRepository.findByMemberId(memberId).orElse(null);
-        }else{
-            Cookie guestCookie = findCookie(request);
-            if(guestCookie != null){
-                try{
-                    Long guestCartId = Long.parseLong(guestCookie.getValue());
-                    cart = cartRepository.findGuestCartById(guestCartId).orElse(null);
-                } catch (NumberFormatException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-
-        if(cart == null){
+        // 카트가 없으면
+        if (cart == null) {
             return new CartListResponse(Collections.emptyList(), 0L);
         }
 
-        List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart);
+        // 카트가 있는데 모두 비어있다면
+        List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart.getId());
+        if (cartItems.isEmpty()) {
+            return new CartListResponse(Collections.emptyList(), 0L);
+        }
 
-        List<Long> bookIds = cartItems.stream()
-                .map(CartItem::getBookId)
-                .toList();
-
-        List<CartDetailResponse> bookInfoList = bookCacheService.getBooksBulk(bookIds);
-
-        // Map<BookId, BookResponse> 생성
+        // Bulk 조회
+        List<Long> bookIds = cartItems.stream().map(CartItem::getBookId).toList();
+        List<CartDetailResponse> bookInfoList = bookFeignClient.getBooksBulk(bookIds);
         Map<Long, CartDetailResponse> bookMap = bookInfoList.stream()
                 .collect(Collectors.toMap(CartDetailResponse::id, b -> b));
 
         long totalCartPrice = 0L;
         List<CartDetailResponse> responseList = new ArrayList<>();
 
-        for(CartItem item : cartItems){
+        for (CartItem item : cartItems) {
             CartDetailResponse book = bookMap.get(item.getBookId());
+            if (book == null) continue; // 책 정보가 없을 경우 대비
 
             long itemTotalPrice = book.price() * item.getQuantity();
             totalCartPrice += itemTotalPrice;
 
             responseList.add(new CartDetailResponse(
-                    book.id(),
-                    book.title(),
-                    book.author(),
-                    book.price(),
-                    item.getQuantity(),
-                    itemTotalPrice,
-                    book.image()
-            ));}
+                    book.id(), book.title(), book.author(), book.price(),
+                    item.getQuantity(), itemTotalPrice, book.image()
+            ));
+        }
 
         return new CartListResponse(responseList, totalCartPrice);
     }
 
     @Override
-    public void addBookToCart(CartAddRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse){
-        Cart cart = getCurrentCart(httpRequest, httpResponse);
+    public String addBookToCart(CartAddRequest request, Long memberId, String guestId) {
+        // 카트 가져오기 (없으면 생성)
+        Cart cart = resolveCart(memberId, guestId);
 
-        Optional<CartItem> existCartItem = cartItemRepository.findByCartIdAndBookId(cart, request.bookId());
-
+        // 아이템 추가/수정 로직
+        Optional<CartItem> existCartItem = cartItemRepository.findByCartIdAndBookId(cart.getId(), request.bookId());
+        // 카트 아이템 존재시 수량만 증가
         if (existCartItem.isPresent()) {
-            // 존재하는 상품
             CartItem existingItem = existCartItem.get();
-
-            // 기존 수량 + 요청 수량
-            // (최대 수량 제한 로직을 여기에 추가할 수 있습니다. 예: 10권 제한)
             existingItem.setQuantity(existingItem.getQuantity() + request.quantity());
-
-        } else {
-            CartItem newItem = new CartItem(request.bookId(), request.quantity());
-
-            cartItemRepository.save(newItem);
         }
-    }
-
-
-    // 회원이면 repository 에서 해당 Cart 찾아서 반환
-    // 비회원이면 repository 에서 새로운 Cart 생성
-
-    private Cart getCurrentCart(HttpServletRequest request, HttpServletResponse response){
-        Long userId = this.getMemberId();
-        if(userId != null){
-            return (Cart) cartRepository.findByMemberId(userId)
-                    .orElseGet(() -> createCart(userId));
+        // 없다면 새롭게 추가
+        else {
+            cartItemRepository.save(new CartItem(request.bookId(), request.quantity(), cart));
         }
-        Cookie guestCookie = findCookie(request);
-        if(guestCookie != null){
-            long guestCartId;
-            try{
-                guestCartId = Long.parseLong(guestCookie.getValue());
-            }catch(NumberFormatException e){
-                return createGuestCartAndSetCookie(response);
-            }
 
-            Optional<Cart> existCart = cartRepository.findByIdAndMemberIdIsNull(guestCartId);
-
-            if(existCart.isPresent()){
-                return existCart.get();
-            }
-        }
-        return createGuestCartAndSetCookie(response);
-    }
-
-    private Cart createCart(Long userId){
-        return cartRepository.save(new Cart(userId));
-    }
-
-    private Cart createGuestCartAndSetCookie(HttpServletResponse response){
-        Cart newCart = new Cart(null);
-        newCart = cartRepository.save(newCart);
-
-        Cookie newCookie = new Cookie("guestCookie", newCart.getId().toString());
-        newCookie.setPath("/");
-        newCookie.setMaxAge(60 * 60 * 24 * 30);
-        response.addCookie(newCookie);
-
-        return newCart;
-    }
-
-    private Cookie findCookie(HttpServletRequest request) {
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if (cookie.getName().equals("guestCookie")) {
-                    return cookie;
-                }
-            }
+        // 3. 새로운 비회원 카트가 생성된 경우에만 ID 반환 controller 에서 쿠키 구워주기 위해서
+        if (memberId == null && (!cart.getId().toString().equals(guestId))) {
+            return cart.getId().toString();
         }
         return null;
     }
 
-    private Long getMemberId(){
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if(auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)){
-            String userId = ((UserDetails) auth.getPrincipal()).getUsername();
+    @Override
+    public void deleteCartItem(Long memberId, String guestId) {
+        findCart(memberId, guestId).ifPresent(cart ->
+                cartItemRepository.deleteByCartId(cart.getId())
+        );
+    }
 
-            return Long.parseLong(userId);
+    // --- Helper Methods ---
+
+    // 카트를 찾거나, 없으면 생성해서 반환
+    private Cart resolveCart(Long memberId, String guestId) {
+        // 카트를 찾고 만약에 없다면 회원아이디로 카트를 생성해줌
+        if (memberId != null) {
+            return cartRepository.findByMemberId(memberId)
+                    .orElseGet(() -> cartRepository.save(new Cart(memberId)));
         }
-        return null;
+
+        // 비회원: 쿠키 ID로 조회 시도
+        if (guestId != null) {
+            try {
+                Long id = Long.parseLong(guestId);
+                return cartRepository.findGuestCartById(id)
+                        .orElseGet(() -> cartRepository.save(new Cart(null))); // 유효하지 않은 쿠키면 새로 생성, 비회원은 memberId가 null
+            } catch (NumberFormatException e) {
+                // 쿠키 값이 이상하면 무시하고 새로 생성
+            }
+        }
+
+        // 쿠키도 없고 회원도 아니면 새로 생성
+        return cartRepository.save(new Cart(null));
+    }
+
+    // 단순 조회용 (생성 X)
+    private Optional<Cart> findCart(Long memberId, String guestId) {
+        if (memberId != null) {
+            return cartRepository.findByMemberId(memberId);
+        }
+        if (guestId != null) {
+            try {
+                return cartRepository.findGuestCartById(Long.parseLong(guestId));
+            } catch (NumberFormatException e) {
+                return Optional.empty();
+            }
+        }
+        return Optional.empty();
     }
 }

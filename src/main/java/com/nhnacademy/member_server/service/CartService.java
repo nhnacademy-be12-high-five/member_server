@@ -9,6 +9,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 
 public interface CartService {
-    CartListResponse getCartItemList(HttpServletRequest httpServletRequest);
-    void addBookToCart(CartAddRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse);
+    CartListResponse getCartItemList(Long memberId, String guestId);
+
+    String addBookToCart(CartAddRequest request, Long memberId, String guestId);
+
+    void deleteCartItem(Long memberId, String guestId);
 }
