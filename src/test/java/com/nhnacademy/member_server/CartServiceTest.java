@@ -1,6 +1,9 @@
 package com.nhnacademy.member_server;
 
 
+import com.nhnacademy.member_server.service.impl.CartServiceImpl;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import com.nhnacademy.member_server.dto.CartAddRequest;
 import com.nhnacademy.member_server.dto.CartDetailResponse;
 import com.nhnacademy.member_server.dto.CartItemUpdateRequest;
@@ -13,7 +16,7 @@ import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.feign.BookFeignClient;
 import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
-import com.nhnacademy.member_server.service.impl.CartServiceImpl;
+import com.nhnacademy.member_server.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +31,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -45,6 +49,9 @@ class CartServiceTest {
 
     @Mock
     private BookFeignClient bookFeignClient;
+
+    @Mock
+    private MemberRepository memberRepository;
 
     // =================================================================
     // 1. 장바구니 담기 (addBookToCart)
