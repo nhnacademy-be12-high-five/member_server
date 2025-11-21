@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-import java.sql.Timestamp;
-
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -25,37 +25,31 @@ public class Member {
     private String loginId;
 
     @Setter
-    @NotNull
-    @Column(nullable = false, length = 50)
+    @NotNull    @Column(nullable = false, length = 50)
     private String name;
 
     @Setter
-    @NotNull
-    @Column(nullable = false)
+    @NotNull    @Column(nullable = false)
     private String password;
 
     @Setter
-    @NotNull
-    @Column(nullable = false, length = 20)
+    @NotNull    @Column(nullable = false, length = 20)
     private String phone;
 
     @Setter
-    @NotNull
-    @Column(nullable = false, length = 100)
+    @NotNull    @Column(nullable = false, length = 100)
     private String email;
 
     @Setter
-    @Column(name = "birth_date")
-    private Timestamp birthDate;
+    @NotNull    @Column(name = "birth_date", nullable = false)
+    private LocalDate birthDate;
 
     @Setter
-    @NotNull
-    @Column(name = "last_login_at")
-    private Timestamp lastLoginAt;
+    @NotNull    @Column(name = "last_login_at", nullable = false)
+    private LocalDateTime lastLoginAt;
 
     @Setter
-    @NotNull
-    @Enumerated(EnumType.STRING)
+    @NotNull    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status;
 
@@ -67,16 +61,15 @@ public class Member {
     private String provider;
 
     @Setter
-    @NotNull
-    @Column(nullable = false, length = 20)
+    @NotNull    @Column(nullable = false, length = 20)
     private String role;
 
     @Setter
-    @NotNull
-    @Column(name = "current_point", nullable = false)
+    @NotNull    @Column(name = "current_point", nullable = false)
     private long currentPoint;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "grade_id", nullable = false)
     private Grade grade;
+
 }
