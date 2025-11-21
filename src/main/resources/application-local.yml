@@ -1,0 +1,26 @@
+server:
+  port: 9002 # 로컬에서 띄울 포트
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/taehunDB # 내 로컬 DB
+    username: root
+    password:
+
+  # JPA/Hibernate 로그 설정 등 개발 편의 설정 추가
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create
+
+springdoc:
+  version: V.0.0.1
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /api-docs
+
+  default-consumes-media-type: application/json;charset=UTF-8
+  default-produces-media-type: application/json;charset=UTF-8

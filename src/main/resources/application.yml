@@ -1,16 +1,27 @@
-server:
-  port: 9001
-
 spring:
   application:
     name: member_server
+
+  profiles:
+    active: local
+
+  config:
+    import: "configserver:"
+
   cloud:
     config:
-      enabled: false # config_server ?? ? ??
+      discovery:
+        enabled: false
+        service-id: config-server
+      retry:
+        initial-interval: 2000  # 2초 간격
+        max-attempts: 30        # 30번 (총 1분)
+      fail-fast: true
 
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
-  instance:
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false

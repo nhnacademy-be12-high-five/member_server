@@ -1,0 +1,24 @@
+name: Member Service CI/CD
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  ci-deploy:
+    uses: nhnacademy-be12-high-five/.github/.github/workflows/shared-workflow.yml@feat/cicd
+    with:
+      project-key: team5-member-service
+      docker-image: fbxogns123/member-server
+      container-name: member_server
+      maven-args: "-B -DskipTests"
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      SSH_IP: ${{ secrets.SSH_IP }}
+      SSH_ID: ${{ secrets.SSH_ID }}
+      SSH_PW: ${{ secrets.SSH_PW }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
