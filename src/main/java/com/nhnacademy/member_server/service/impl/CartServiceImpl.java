@@ -2,10 +2,13 @@ package com.nhnacademy.member_server.service.impl;
 
 import com.nhnacademy.member_server.dto.CartAddRequest;
 import com.nhnacademy.member_server.dto.CartDetailResponse;
+import com.nhnacademy.member_server.dto.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.CartListResponse;
 import com.nhnacademy.member_server.entity.Cart;
 import com.nhnacademy.member_server.entity.CartItem;
 import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.feign.BookFeignClient;
 import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
@@ -93,14 +96,36 @@ public class CartServiceImpl implements CartService {
         return null;
     }
 
+    // 장바구니 전체 비우기
     @Override
-    public void deleteCartItem(Long memberId, String guestId) {
+    public void deleteAllCartItem(Long memberId, String guestId) {
         findCart(memberId, guestId).ifPresent(cart ->
                 cartItemRepository.deleteByCartId(cart.getId())
         );
     }
 
-    // --- Helper Methods ---
+    // 장바구니 책 단건 삭제 (수량 무시하고)
+    @Override
+    public void deleteCartItem(Long memberId, String guestId, Long bookId) {
+        findCart(memberId, guestId).ifPresent(cart -> {
+            cartItemRepository.deleteByCartIdAndBookId(cart.getId(), bookId);
+        });
+    }
+
+    // 장바구니에서 수량 변경
+    @Override
+    public void updateCartItemQuantity(Long memberId, String guestId, CartItemUpdateRequest request) {
+        Cart cart = findCart(memberId, guestId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_NOT_FOUND));
+
+        CartItem item = cartItemRepository.findByCartIdAndBookId(cart.getId(), request.bookId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND));
+
+        item.setQuantity(request.quantity());
+    }
+
+
+    /// 보조 메소드들 (여기부터)
 
     // 카트를 찾거나, 없으면 생성해서 반환
     private Cart resolveCart(Long memberId, String guestId) {

@@ -1,11 +1,13 @@
 package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.dto.CartAddRequest;
+import com.nhnacademy.member_server.dto.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.CartListResponse;
 import com.nhnacademy.member_server.service.CartService;
 import com.nhnacademy.member_server.utils.CookieUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,15 +51,40 @@ public class CartController implements CartSwagger {
        return ResponseEntity.status(200).body(cartList);
     }
 
-    @PostMapping
-    public ResponseEntity<Void> removeCartItem(HttpServletRequest httpRequest,
+    // 장바구니 비우기
+    @DeleteMapping("/items")
+    public ResponseEntity<Void> deleteAllCartItem(HttpServletRequest httpRequest,
                                                HttpServletResponse httpResponse){
         Long memberId = getMemberId();
         String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
 
-        cartService.deleteCartItem(memberId, guestId);
+        cartService.deleteAllCartItem(memberId, guestId);
         return ResponseEntity.noContent().build();
     }
+
+    // 수량 변경, 책의 아이디와 바뀔 수량은 request에 담겨서 넘어옴
+    @PutMapping("/items")
+    public ResponseEntity<Void> updateQuantity(@RequestBody @Valid CartItemUpdateRequest request,
+                                               HttpServletRequest httpRequest) {
+        Long memberId = getMemberId();
+        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
+
+        cartService.updateCartItemQuantity(memberId, guestId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    // 책 단건 삭제
+    @DeleteMapping("/items/{bookId}")
+    public ResponseEntity<Void> deleteOneItem(@PathVariable Long bookId,
+                                              HttpServletRequest httpRequest) {
+        Long memberId = getMemberId();
+        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
+
+        cartService.deleteCartItem(memberId, guestId, bookId);
+        return ResponseEntity.noContent().build();
+    }
+
+
 
     // 멤버 아이디를 가져오는 함수입니다. 인증을 거쳐서 들어오는거라 없으면 null 값을 반환합니다.
     private Long getMemberId() {
