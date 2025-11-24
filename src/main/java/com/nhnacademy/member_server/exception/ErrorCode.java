@@ -28,7 +28,12 @@ public enum ErrorCode {
 
     // External (외부 서비스 관련)
     EXTERNAL_SERVER_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "EXT001", "외부 서비스 통신 중 오류가 발생했습니다."),
-    BOOK_NOT_FOUND_IN_SERVER(HttpStatus.NOT_FOUND, "EXT002", "도서 서비스에서 해당 책을 찾을 수 없습니다.");
+    BOOK_NOT_FOUND_IN_SERVER(HttpStatus.NOT_FOUND, "EXT002", "도서 서비스에서 해당 책을 찾을 수 없습니다."),
+
+    // Point (포인트 관련)
+    POINT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "포인트 정보를 찾을 수 없습니다."),
+    POINT_NOT_ENOUGH(HttpStatus.BAD_REQUEST, "P002", "포인트 잔액이 부족합니다."),
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "P003", "존재하지 않는 회원입니다.");
 
     private final HttpStatus status;
     private final String code;
