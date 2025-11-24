@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.service;
 
-import com.nhnacademy.member_server.dto.PointEarnRequest;
-import com.nhnacademy.member_server.dto.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.request.PointEarnRequest;
+import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
