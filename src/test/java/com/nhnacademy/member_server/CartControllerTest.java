@@ -12,10 +12,10 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
@@ -28,14 +28,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(CartController.class) // Controller만 테스트
-@AutoConfigureMockMvc(addFilters = false) // Security Filter Chain 건너뛰기 (단순화)
+@WebMvcTest(CartController.class)
+@AutoConfigureMockMvc(addFilters = false) // Security Filter Chain 건너뛰기
 class CartControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private CartService cartService;
 
     @Autowired
@@ -47,10 +47,10 @@ class CartControllerTest {
 
     @Test
     @DisplayName("[회원] 장바구니 담기 성공 - 쿠키 발급 안됨")
-    @WithMockUser(username = "1") // getMemberId()가 1L을 반환하게 됨
+    @WithMockUser(username = "1")
     void addItem_Member() throws Exception {
         // given
-        CartAddRequest request = new CartAddRequest(100L, 2); // bookId: 100, quantity: 2
+        CartAddRequest request = new CartAddRequest(100L, 2);
 
         // 회원은 이미 ID가 있으므로 서비스는 null(새 쿠키 ID)을 반환한다고 가정
         given(cartService.addBookToCart(any(), eq(1L), isNull()))
