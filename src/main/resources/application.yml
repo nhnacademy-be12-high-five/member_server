@@ -6,17 +6,17 @@ spring:
     active: local
 
   config:
-    import: "configserver:"
+    import: "optional:configserver:"
 
-  cloud:
-    config:
-      discovery:
-        enabled: false
-        service-id: config-server
-      retry:
-        initial-interval: 2000  # 2초 간격
-        max-attempts: 30        # 30번 (총 1분)
-      fail-fast: true
+#  cloud:
+#    config:
+#      discovery:
+#        enabled: false
+#        service-id: config-server
+#      retry:
+#        initial-interval: 2000  # 2초 간격
+#        max-attempts: 30        # 30번 (총 1분)
+#      fail-fast: true
 
 eureka:
   client:
