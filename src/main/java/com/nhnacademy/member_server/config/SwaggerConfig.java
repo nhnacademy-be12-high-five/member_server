@@ -12,8 +12,8 @@ public class SwaggerConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Payment Server API")
-                        .description("결제 시스템 API 명세서입니다.")
+                        .title("Member Server API")
+                        .description("멤버 서버 API 명세서입니다.")
                         .version("1.0.0"));
     }
 }
