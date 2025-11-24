@@ -4,19 +4,14 @@ import com.nhnacademy.member_server.dto.request.LoginRequest;
 import com.nhnacademy.member_server.dto.request.SignupRequest;
 import com.nhnacademy.member_server.dto.response.LoginResponse;
 import com.nhnacademy.member_server.dto.response.TokenDto;
-import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,11 +21,11 @@ public class AuthController {
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
 
-    private final AuthService authService;
+    private final AuthServiceImpl authServiceImpl;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        TokenDto tokenDto = authService.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
+        TokenDto tokenDto = authServiceImpl.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
         ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
@@ -45,11 +40,10 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<Void> signup(@RequestBody SignupRequest signupRequest) {
-        authService.signup(signupRequest);
+        authServiceImpl.signup(signupRequest);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    // [추가] 토큰 재발급 엔드포인트
     @PostMapping("/reissue")
     public ResponseEntity<LoginResponse> reissue(
             @CookieValue(name = "refresh-token", required = false) String refreshToken
@@ -58,11 +52,12 @@ public class AuthController {
             throw new RuntimeException("Refresh Token 쿠키가 없습니다.");
         }
 
-        TokenDto tokenDto = authService.reissue(refreshToken);
+        TokenDto tokenDto = authServiceImpl.reissue(refreshToken);
 
         ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
                 .httpOnly(true)
                 .secure(false)
+                //secure 부분은 배포상태에서 https 사용하면 true로 변경해주기
                 .path("/")
                 .maxAge(refreshExpirationTime)
                 .build();
@@ -75,7 +70,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader(name = "X-USER-ID") long loginId) {
-        authService.logout(loginId);
+        authServiceImpl.logout(loginId);
         ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
                 .path("/")
                 .httpOnly(true)
