@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto;
+package com.nhnacademy.member_server.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
