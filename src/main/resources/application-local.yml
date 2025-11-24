@@ -16,9 +16,13 @@ spring:
 
   # JPA/Hibernate 로그 설정 등 개발 편의 설정 추가
   jpa:
-    show-sql: true
     hibernate:
       ddl-auto: create-drop
+    show-sql: true
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
   data:
     redis:
       #      host: 220.67.216.14
@@ -56,5 +60,4 @@ springdoc:
   api-docs:
     path: /api-docs
 
-  default-consumes-media-type: application/json;charset=UTF-8
   default-produces-media-type: application/json;charset=UTF-8
