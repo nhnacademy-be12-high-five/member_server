@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.service;
 
-import com.nhnacademy.member_server.dto.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -13,8 +13,8 @@ public class PointMessageListener {
     private final PointService pointService;
 
     @RabbitListener(queues = "point-queue")
-    public void receiveMessage(PointTransactionRequest requestDto){
-        log.info("RabbitMQ 메시지 수신: userId={}, amount={}", requestDto.getMemberId(), requestDto.getAmount());
+    public void receiveMessage(PointEarnRequest requestDto){
+        log.info("RabbitMQ 메시지 수신: userId={}, amount={}", requestDto.getMemberId(), requestDto.getOrderAmount());
 
         try {
             pointService.earnPoint(requestDto);
