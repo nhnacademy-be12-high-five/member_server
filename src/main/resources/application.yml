@@ -1,11 +1,27 @@
 spring:
   application:
-    name: team5_member_server
-  config:
-    import: "optional:configserver:"
+    name: member_server
 
-# ▼ [필수 추가] 이 부분이 없으면 Docker가 주는 유레카 주소를 못 받습니다!
+  profiles:
+    active: local
+
+  config:
+    import: "configserver:"
+
+  cloud:
+    config:
+      discovery:
+        enabled: false
+        service-id: config-server
+      retry:
+        initial-interval: 2000  # 2초 간격
+        max-attempts: 30        # 30번 (총 1분)
+      fail-fast: true
+
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: http://localhost:8761/eureka/
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false

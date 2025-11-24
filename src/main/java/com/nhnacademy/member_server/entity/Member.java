@@ -12,20 +12,20 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
-import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-
 @Entity
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "member")
+@Table(name = "Member")
 public class Member {
 
     @Id
@@ -58,13 +58,14 @@ public class Member {
     private String email;
 
     @Setter
-    @Column(name = "birth_date")
-    private Timestamp birthDate;
+    @NotNull
+    @Column(name = "birth_date", nullable = false)
+    private LocalDate birthDate;
 
     @Setter
     @NotNull
-    @Column(name = "last_login_at")
-    private Timestamp lastLoginAt;
+    @Column(name = "last_login_at", nullable = false)
+    private LocalDateTime lastLoginAt;
 
     @Setter
     @NotNull
@@ -80,9 +81,9 @@ public class Member {
     private String provider;
 
     @Setter
-    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String role;
+    private Role role;
 
     @Setter
     @NotNull
@@ -92,4 +93,6 @@ public class Member {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "grade_id", nullable = false)
     private Grade grade;
+
+
 }
