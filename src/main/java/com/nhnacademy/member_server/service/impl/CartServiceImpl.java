@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,10 @@ public class CartServiceImpl implements CartService {
     private final MemberRepository memberRepository;
 
     @Override
+    @Cacheable(
+            value = "cart",
+            key = "T(String).valueOf(#memberId != null ? 'm:' + #memberId : 'g:' + #guestId)"
+    )
     @Transactional(readOnly = true) // 성능 최적화, 더티 체킹 과정을 생략함 -> 어차피 수정안하니까 스냅샷 안만듬 변경 감지 x
     public CartListResponse getCartItemList(Long memberId, String guestId) {
         Cart cart = findCart(memberId, guestId).orElse(null);
@@ -76,6 +82,10 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @CacheEvict(
+            value = "cart",
+            key = "T(String).valueOf(#memberId != null ? 'm:' + #memberId : 'g:' + #guestId)"
+    )
     public String addBookToCart(CartAddRequest request, Long memberId, String guestId) {
         // 카트 가져오기 (없으면 생성)
         Cart cart = resolveCart(memberId, guestId);
@@ -101,6 +111,10 @@ public class CartServiceImpl implements CartService {
 
     // 장바구니 전체 비우기
     @Override
+    @CacheEvict(
+            value = "cart",
+            key = "T(String).valueOf(#memberId != null ? 'm:' + #memberId : 'g:' + #guestId)"
+    )
     public void deleteAllCartItem(Long memberId, String guestId) {
         findCart(memberId, guestId).ifPresent(cart ->
                 cartItemRepository.deleteByCartId(cart.getId())
@@ -109,6 +123,10 @@ public class CartServiceImpl implements CartService {
 
     // 장바구니 책 단건 삭제 (수량 무시하고)
     @Override
+    @CacheEvict(
+            value = "cart",
+            key = "T(String).valueOf(#memberId != null ? 'm:' + #memberId : 'g:' + #guestId)"
+    )
     public void deleteCartItem(Long memberId, String guestId, Long bookId) {
         findCart(memberId, guestId).ifPresent(cart -> {
             cartItemRepository.deleteByCartIdAndBookId(cart.getId(), bookId);
@@ -117,6 +135,10 @@ public class CartServiceImpl implements CartService {
 
     // 장바구니에서 수량 변경
     @Override
+    @CacheEvict(
+            value = "cart",
+            key = "T(String).valueOf(#memberId != null ? 'm:' + #memberId : 'g:' + #guestId)"
+    )
     public void updateCartItemQuantity(Long memberId, String guestId, CartItemUpdateRequest request) {
         Cart cart = findCart(memberId, guestId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CART_NOT_FOUND));
