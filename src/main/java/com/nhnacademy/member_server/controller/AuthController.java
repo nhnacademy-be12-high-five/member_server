@@ -4,7 +4,7 @@ import com.nhnacademy.member_server.dto.request.LoginRequest;
 import com.nhnacademy.member_server.dto.request.SignupRequest;
 import com.nhnacademy.member_server.dto.response.LoginResponse;
 import com.nhnacademy.member_server.dto.response.TokenDto;
-import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -21,11 +21,11 @@ public class AuthController {
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
 
-    private final AuthService authService;
+    private final AuthServiceImpl authServiceImpl;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        TokenDto tokenDto = authService.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
+        TokenDto tokenDto = authServiceImpl.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
         ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
@@ -40,7 +40,7 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<Void> signup(@RequestBody SignupRequest signupRequest) {
-        authService.signup(signupRequest);
+        authServiceImpl.signup(signupRequest);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -52,7 +52,7 @@ public class AuthController {
             throw new RuntimeException("Refresh Token 쿠키가 없습니다.");
         }
 
-        TokenDto tokenDto = authService.reissue(refreshToken);
+        TokenDto tokenDto = authServiceImpl.reissue(refreshToken);
 
         ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
                 .httpOnly(true)
@@ -70,7 +70,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader(name = "X-USER-ID") long loginId) {
-        authService.logout(loginId);
+        authServiceImpl.logout(loginId);
         ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
                 .path("/")
                 .httpOnly(true)
