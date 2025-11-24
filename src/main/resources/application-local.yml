@@ -5,6 +5,11 @@ spring:
   config:
     activate:
       on-profile: "local"
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: nhnacademy123!
 
   application:
     name: member-server
