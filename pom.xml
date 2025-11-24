@@ -28,7 +28,6 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <sonar.projectKey>team5_member_server</sonar.projectKey>
         <spring-cloud.version>2025.0.0</spring-cloud.version>
     </properties>
     <dependencies>
