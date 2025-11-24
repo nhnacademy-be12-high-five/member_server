@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nhnacademy.member_server.dto.request.LoginRequest;
 import com.nhnacademy.member_server.dto.request.SignupRequest;
 import com.nhnacademy.member_server.dto.response.TokenDto;
-import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class AuthControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private AuthService authService;
+    private AuthServiceImpl authServiceImpl;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -51,7 +51,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
 
-        verify(authService).signup(any(SignupRequest.class));
+        verify(authServiceImpl).signup(any(SignupRequest.class));
     }
 
     @Test
@@ -62,7 +62,7 @@ class AuthControllerTest {
         ReflectionTestUtils.setField(request, "password", "1234");
 
         TokenDto tokenDto = new TokenDto("access-token-value", "refresh-token-value");
-        given(authService.loginUser(any(), any())).willReturn(tokenDto);
+        given(authServiceImpl.loginUser(any(), any())).willReturn(tokenDto);
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -78,7 +78,7 @@ class AuthControllerTest {
         String refreshToken = "valid-refresh-token";
         TokenDto newToken = new TokenDto("new-access", "new-refresh");
 
-        given(authService.reissue(refreshToken)).willReturn(newToken);
+        given(authServiceImpl.reissue(refreshToken)).willReturn(newToken);
 
         mockMvc.perform(post("/auth/reissue")
                         .cookie(new Cookie("refresh-token", refreshToken)))

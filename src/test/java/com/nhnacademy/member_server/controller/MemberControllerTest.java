@@ -1,8 +1,7 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.MemberServerApplication;
-import com.nhnacademy.member_server.service.AuthService;
-import com.nhnacademy.member_server.service.MemberService;
+import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
+import com.nhnacademy.member_server.service.impl.MemberServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +27,10 @@ class MemberControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private MemberService memberService;
+    private MemberServiceImpl memberServiceImpl;
 
     @MockitoBean
-    private AuthService authService;
+    private AuthServiceImpl authServiceImpl;
 
     @Test
     @DisplayName("마이페이지 조회 (Gateway 헤더 필수)")
@@ -53,7 +52,7 @@ class MemberControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(cookie().maxAge("refresh-token", 0));
 
-        verify(memberService).withdraw(userId);
-        verify(authService).logout(userId);
+        verify(memberServiceImpl).withdraw(userId);
+        verify(authServiceImpl).logout(userId);
     }
 }
