@@ -44,7 +44,6 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    // [추가] 토큰 재발급 엔드포인트
     @PostMapping("/reissue")
     public ResponseEntity<LoginResponse> reissue(
             @CookieValue(name = "refresh-token", required = false) String refreshToken
@@ -58,6 +57,7 @@ public class AuthController {
         ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
                 .httpOnly(true)
                 .secure(false)
+                //secure 부분은 배포상태에서 https 사용하면 true로 변경해주기
                 .path("/")
                 .maxAge(refreshExpirationTime)
                 .build();

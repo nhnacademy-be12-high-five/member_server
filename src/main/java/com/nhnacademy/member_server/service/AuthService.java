@@ -110,6 +110,10 @@ public class AuthService {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
 
+        if (member.getStatus().equals(Status.WITHDRAWAL)) {
+            throw new RuntimeException("탈퇴된 회원입니다.");
+        }
+
         String newAccessToken = jwtUtil.createAccessToken(member.getId(), member.getRole());
         String newRefreshToken = jwtUtil.createRefreshToken(member.getId());
 
