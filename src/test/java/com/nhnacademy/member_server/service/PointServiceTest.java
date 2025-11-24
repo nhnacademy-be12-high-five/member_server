@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.nhnacademy.member_server.dto.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.PointHistory;
 import com.nhnacademy.member_server.repository.MemberRepository;
