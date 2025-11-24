@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PointTransactionResponse {
-    @Schema(description = "포인트 적립/사용/환불 된 유저 아이디", example = "1")
+    @Schema(description = "포인트 사용/환불 된 유저 아이디", example = "1")
     private Long memberId;
-    @Schema(description = "포인트 적립/사용/환불 후 포인트 잔액", example = "2000")
+    @Schema(description = "포인트 사용/환불 후 포인트 잔액", example = "2000")
     private Long currentPoint;
 }
