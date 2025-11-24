@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.dto.PointEarnRequest;
 import com.nhnacademy.member_server.dto.PointTransactionRequest;
 import com.nhnacademy.member_server.dto.PointTransactionResponse;
 import com.nhnacademy.member_server.service.PointService;
@@ -22,14 +23,14 @@ public class PointInternalController {
 
     private final PointService pointService;
 
-    @Operation(summary = "포인트 적립", description = "주문 완료 또는 리뷰 작성 시 포인트를 적립합니다.")
+    @Operation(summary = "포인트 적립", description = "주문 완료 / 리뷰 작성 / 회원가입 시 포인트를 적립합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "적립 성공"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 회원"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    @PostMapping("/earn") // 현재 미구현
-    public ResponseEntity<Void> earnPoint(@RequestBody PointTransactionRequest requestDto){
+    @PostMapping("/earn")
+    public ResponseEntity<Void> earnPoint(@RequestBody PointEarnRequest requestDto){
         pointService.earnPoint(requestDto);
 
         return ResponseEntity.ok().build();
