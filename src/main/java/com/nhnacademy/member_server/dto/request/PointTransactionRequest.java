@@ -13,6 +13,6 @@ public class PointTransactionRequest {
     private Long memberId;
     @Schema(description = "포인트 사용/환불 액수", example = "100")
     private Long amount;
-    @Schema(description = "포인트 사용/환불 사유", example = "도서 구매: 배송 완료 포인트 적립")
-    private String description;
+    @Schema(description = "포인트 사용/환불 사유에 들어갈 주문 번호", example = "1")
+    private Long orderId;
 }

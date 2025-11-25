@@ -1,7 +1,6 @@
 package com.nhnacademy.member_server.handler;
 
 import com.nhnacademy.member_server.exception.BusinessException;
-import com.nhnacademy.member_server.exception.EntityNotFoundException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import feign.FeignException;
 import feign.RetryableException;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    //
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e){
         log.warn("BusinessException: {}", e.getErrorCode().getMessage());
@@ -71,21 +69,6 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new ErrorResponse(errorCode.getCode(), "현재 도서 서비스를 이용할 수 없습니다."));
     }
-
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFoundRequest(EntityNotFoundException e) {
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse("P001", "데이터가 없습니다: " + e.getMessage()));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException e) {
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("C001", "잘못된 요청입니다: " + e.getMessage()));
-    }
-
 
     public record ErrorResponse(String code, String message){}
 }
