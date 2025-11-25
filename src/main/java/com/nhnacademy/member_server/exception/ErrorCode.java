@@ -33,7 +33,11 @@ public enum ErrorCode {
     // Point (포인트 관련)
     POINT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "포인트 정보를 찾을 수 없습니다."),
     POINT_NOT_ENOUGH(HttpStatus.BAD_REQUEST, "P002", "포인트 잔액이 부족합니다."),
-    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "P003", "존재하지 않는 회원입니다.");
+    POINT_NOT_ORDER_ID(HttpStatus.BAD_REQUEST, "P003", "주문 포인트 적립 시 주문번호가 존재해야 합니다"),
+    POINT_NOT_POLICY(HttpStatus.INTERNAL_SERVER_ERROR, "P004", "포인트 정책이 설정되지 않았습니다"),
+
+    // Member
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "M001", "존재하지 않는 회원입니다.");
 
     private final HttpStatus status;
     private final String code;
