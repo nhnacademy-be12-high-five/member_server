@@ -6,7 +6,7 @@ import com.nhnacademy.member_server.dto.response.TokenDto;
 public interface AuthService {
     TokenDto loginUser(String loginId, String password);
 
-    void signup(SignupRequest request);
+    void signup(SignupRequest request, String guestId);
 
     TokenDto reissue(String refreshToken);
 

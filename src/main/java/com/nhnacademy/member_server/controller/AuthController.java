@@ -39,8 +39,9 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@RequestBody SignupRequest signupRequest) {
-        authServiceImpl.signup(signupRequest);
+    public ResponseEntity<Void> signup(@RequestBody SignupRequest signupRequest,
+                                       @CookieValue(value = "guestCookie", required = false) String guestId) {
+        authServiceImpl.signup(signupRequest, guestId);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

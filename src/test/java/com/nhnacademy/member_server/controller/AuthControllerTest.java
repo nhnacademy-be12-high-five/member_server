@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,16 +43,18 @@ class AuthControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    @DisplayName("회원가입")
+    @DisplayName("회원가입, 쿠키 포함 테스트")
     void signup_success() throws Exception {
         SignupRequest request = new SignupRequest("user1", "1234", "김철수", "010-1234-5678", "test@test.com", LocalDate.now());
+        String guestId = "guest-uuid-1234";
 
         mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(request))
+                        .cookie(new Cookie("guestCookie", guestId)))
                 .andExpect(status().isCreated());
 
-        verify(authServiceImpl).signup(any(SignupRequest.class));
+        verify(authServiceImpl).signup(any(SignupRequest.class), eq(guestId));
     }
 
     @Test

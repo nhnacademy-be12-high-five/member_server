@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.dto;
 
-public record CartDetailResponse(Long id,
+public record CartDetailResponse(Long bookId,
                                  String title,
                                  String author,
                                  Long price,

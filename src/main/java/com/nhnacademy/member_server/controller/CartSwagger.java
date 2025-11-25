@@ -4,9 +4,6 @@ import com.nhnacademy.member_server.dto.CartAddRequest;
 import com.nhnacademy.member_server.dto.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.CartListResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +23,7 @@ public interface CartSwagger {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 책 (Book Service)")
     })
     @PostMapping("/items")
-    ResponseEntity<Void> add(@RequestBody CartAddRequest request, HttpServletRequest httpRequest,HttpServletResponse httpResponse);
+    ResponseEntity<Void> addItemToCart(@RequestBody CartAddRequest request, HttpServletRequest httpRequest,HttpServletResponse httpResponse);
 
     @Operation(summary = "장바구니 내역 조회", description = "장바구니에 담긴 책의 기본 정보들을 보여주는 기능입니다")
     @ApiResponses(value = {

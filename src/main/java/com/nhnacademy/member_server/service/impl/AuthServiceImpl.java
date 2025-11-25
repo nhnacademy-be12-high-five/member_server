@@ -11,6 +11,7 @@ import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.CartService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final GradeRepository gradeRepository;
+    private final CartService cartService;
 
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
@@ -71,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void signup(SignupRequest request) {
+    public void signup(SignupRequest request, String guestId) {
         if (memberRepository.existsByLoginId(request.getLoginId())) {
             throw new RuntimeException("이미 존재하는 아이디입니다.");
         }
@@ -93,7 +95,11 @@ public class AuthServiceImpl implements AuthService {
                 .grade(basicGrade)
                 .build();
 
-        memberRepository.save(member);
+        Member savedMember = memberRepository.save(member);
+
+        if (guestId != null) {
+            cartService.migrateGuestCart(guestId, savedMember.getId());
+        }
     }
 
     @Override

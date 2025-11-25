@@ -21,6 +21,7 @@ public class CookieUtils {
         cookie.setPath("/");
         cookie.setMaxAge(maxAge);
         cookie.setHttpOnly(true); // 보안을 위해 추천
+        // cookie.setSecure(true); // https 환경에서만 되게 추가
         response.addCookie(cookie);
     }
 }

@@ -5,8 +5,9 @@ import com.nhnacademy.member_server.entity.CartItem;
 import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
-import com.nhnacademy.member_server.repository.RedisCartRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,52 +17,56 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CartDBSyncService {
 
-    private final RedisCartRepository redisCartRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final MemberRepository memberRepository;
 
-    // 1분마다 실행 (운영에서는 주기 조정 / scan 기반으로 변경 권장)
-    @Scheduled(fixedDelay = 60_000)
+    private static final String DIRTY_KEY = "cart:dirty"; // 변경된 회원 ID 목록
+
+    @Scheduled(fixedDelay = 60_000) // 앞타임 끝나고 1분마다
     @Transactional
     public void syncRedisToDb() {
-        Set<String> keys = redisCartRepository.getAllCartKeys();
-        if (keys == null || keys.isEmpty()) return;
 
-        for (String key : keys) {
-            // key 포맷: cart:m:{memberId} 또는 cart:g:{guestId}
-            if (key.startsWith("cart:m:")) {
-                String memberIdStr = key.substring("cart:m:".length());
-                Long memberId = Long.parseLong(memberIdStr);
+        // 변경된 회원들만 꺼내서 작업을 진행함 -> 성능 끝판왕
+        Set<Object> dirtyMemberIds = redisTemplate.opsForSet().members(DIRTY_KEY);
 
-                Map<Long, Integer> items = redisCartRepository.getCartItems(key);
-
-                // 회원 카트 동기화: 간단하게 기존 항목 다 지우고 다시 생성
-                Cart cart = cartRepository.findByMember_Id(memberId)
-                        .orElseGet(() -> cartRepository.save(new Cart(memberRepository.getReferenceById(memberId)))); // create cart with member ref
-
-                // delete existing items (단순 구현; 최적화 가능)
-                cartItemRepository.deleteByCartId(cart.getId());
-
-                items.forEach((bookId, qty) -> {
-                    cartItemRepository.save(new CartItem(bookId, qty, cart));
-                });
-            } else {
-                // guest 카트: 정책에 따라 처리 (예: DB에 저장하지 않음 또는 별도 로직)
-                // 현재는 스킵
-            }
+        // 없으면 조기 퇴근
+        if (dirtyMemberIds == null || dirtyMemberIds.isEmpty()) {
+            return;
         }
-    }
 
-    // 주문 직전 단건 즉시 저장: member 전용 helper
-    @Transactional
-    public void saveMemberCartNow(Long memberId, Map<Long, Integer> items) {
-        Cart cart = cartRepository.findByMember_Id(memberId)
-                .orElseGet(() -> cartRepository.save(new Cart(memberRepository.getReferenceById(memberId))));
+        // 작업 시작
+        for (Object idObj : dirtyMemberIds) {
+            String memberIdStr = (String) idObj;
+            Long memberId = Long.parseLong(memberIdStr);
+            String redisKey = "cart:m:" + memberId;
 
-        cartItemRepository.deleteByCartId(cart.getId());
-        items.forEach((bookId, qty) -> cartItemRepository.save(new CartItem(bookId, qty, cart)));
+            // Redis 해당 회원의 장바구니 조회
+            Map<Object, Object> redisItems = redisTemplate.opsForHash().entries(redisKey);
+
+            // DB 동기화 (기존 것 지우고 새로 쓰기)
+            Cart cart = cartRepository.findByMember_Id(memberId)
+                    .orElseGet(() -> cartRepository.save(new Cart(memberRepository.getReferenceById(memberId))));
+
+            cartItemRepository.deleteByCartId(cart.getId()); // 기존 DB 데이터 삭제 (DELETE)
+
+            // INSERT
+            if (!redisItems.isEmpty()) {
+                redisItems.forEach((bookIdStr, qtyStr) -> {
+                    cartItemRepository.save(new CartItem(
+                            Long.parseLong((String)bookIdStr),
+                            Integer.parseInt((String)qtyStr),
+                            cart
+                    ));
+                });
+            }
+
+            // 처리 완료했으니 Dirty Set에서 제거
+            redisTemplate.opsForSet().remove(DIRTY_KEY, memberIdStr);
+        }
     }
 }
