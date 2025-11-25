@@ -8,7 +8,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class SignupRequest {
+public class MemberCreateRequest {
     @NotBlank
     String loginId;
 

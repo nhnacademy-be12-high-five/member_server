@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.service.impl;
 
-import com.nhnacademy.member_server.dto.request.SignupRequest;
+import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.TokenDto;
 import com.nhnacademy.member_server.entity.Grade;
 import com.nhnacademy.member_server.entity.Member;
@@ -11,6 +11,8 @@ import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.AuthService;
+import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,9 +23,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -71,7 +70,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void signup(SignupRequest request) {
+    public void signup(MemberCreateRequest request) {
         if (memberRepository.existsByLoginId(request.getLoginId())) {
             throw new RuntimeException("이미 존재하는 아이디입니다.");
         }
