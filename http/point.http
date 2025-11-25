@@ -1,0 +1,73 @@
+### 1. 포인트 사용 (차감) 테스트
+# 기대 결과: 200 OK / DB 잔액 9000원
+POST http://localhost:9002/internal/points/use
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "amount": 1000,
+  "description": "테스트용 포인트 사용"
+}
+
+### 2. 포인트 환불 (롤백) 테스트
+# 기대 결과: 200 OK / DB 잔액 다시 10000원
+POST http://localhost:9002/internal/points/revert
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "amount": 1000,
+  "description": "테스트용 포인트 환불"
+}
+
+### 3. 잔액 부족 테스트 (예외 발생)
+# 기대 결과: 500 Error
+POST http://localhost:9002/internal/points/use
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "amount": 9999999,
+  "description": "테스트용 포인트 사용"
+}
+
+### 4. 주문 적립 테스트 (등급 비율)
+POST http://localhost:9002/internal/points/earn
+Content-Type: application/json
+
+{
+"memberId": 1,
+"pureAmount": 1000,
+"eventType": "ORDER"
+}
+
+### 5. 일반 리뷰 적립 테스트 (200 포인트)
+POST http://localhost:9002/internal/points/earn
+Content-Type: application/json
+
+{
+"memberId": 1,
+"eventType": "REVIEW"
+}
+
+### 6. 사진 리뷰 적립 테스트 (500 포인트)
+POST http://localhost:9002/internal/points/earn
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "eventType": "PHOTO_REVIEW"
+}
+
+
+### 7. 회원가입 적립 테스트 (5000 포인트)
+POST http://localhost:9002/internal/points/earn
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "eventType": "SIGNUP"
+}
+
+
+
