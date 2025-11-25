@@ -1,32 +1,40 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.service.AuthService;
-import com.nhnacademy.member_server.service.MemberService;
+import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
+import com.nhnacademy.member_server.service.impl.MemberServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/members")
 @RequiredArgsConstructor
 public class MemberController {
 
-    private final MemberService memberService; // 회원 상태 관리
-    private final AuthService authService;
+    private final MemberServiceImpl memberServiceImpl; // 회원 상태 관리
+    private final AuthServiceImpl authServiceImpl;
+
+//    @GetMapping
+//    public ResponseEntity<>
 
     @GetMapping("/my-page")
     public ResponseEntity<String> getMyPage(
-            @RequestHeader("X-User-ID") Long userId
+            @RequestHeader("X-User-ID") Long userId,
+            @RequestHeader("X-role") String role
     ) {
-        return ResponseEntity.ok("마이페이지 접근 성공! 당신의 회원 ID는: " + userId);
+        return ResponseEntity.ok("마이페이지 접근 성공! 당신의 회원 ID는: " + userId + "role : " + role);
     }
 
     @DeleteMapping("/withdraw")
     public ResponseEntity<Void> withdraw(@RequestHeader(name = "X-USER-ID") long loginId) {
-        memberService.withdraw(loginId);
-        authService.logout(loginId);
+        memberServiceImpl.withdraw(loginId);
+        authServiceImpl.logout(loginId);
         ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
                 .path("/")
                 .httpOnly(true)
@@ -37,4 +45,5 @@ public class MemberController {
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
                 .build();
     }
+
 }
