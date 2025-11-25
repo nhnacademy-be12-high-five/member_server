@@ -44,7 +44,7 @@ class PointServiceTest {
 
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-        PointTransactionRequest request = new PointTransactionRequest(memberId, useAmount, "테스트 사용");
+        PointTransactionRequest request = new PointTransactionRequest(memberId, useAmount, 1L);
 
         // when
         Long remainPoint = pointService.usePoint(request);
@@ -66,7 +66,7 @@ class PointServiceTest {
 
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-        PointTransactionRequest request = new PointTransactionRequest(memberId, 5000L, "테스트");
+        PointTransactionRequest request = new PointTransactionRequest(memberId, 5000L, 1L);
 
         // when & then
         assertThatThrownBy(() -> pointService.usePoint(request))
@@ -84,7 +84,7 @@ class PointServiceTest {
 
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-        PointTransactionRequest request = new PointTransactionRequest(memberId, 1000L, "환불");
+        PointTransactionRequest request = new PointTransactionRequest(memberId, 1000L, 1L);
 
         // when
         Long result = pointService.revertPoint(request);
