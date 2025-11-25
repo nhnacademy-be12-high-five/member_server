@@ -95,17 +95,18 @@ public class PointServiceImpl implements PointService {
     public Long usePoint(PointTransactionRequest requestDto){
         Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long amountUsedPoint = requestDto.getAmount();
-        String description = "";
 
         // 검증
         if(member.getCurrentPoint() < amountUsedPoint){
             throw new BusinessException(ErrorCode.POINT_NOT_ENOUGH);
         }
-
+        if (requestDto.getOrderId() == null) {
+            throw new BusinessException(POINT_NOT_ORDER_ID);
+        }
         // 잔액 차감
         long newPointBalance = member.getCurrentPoint() - amountUsedPoint;
         member.setCurrentPoint(newPointBalance);
-        description = String.format("상품 구매로 인한 포인트 차감 (주문번호: %d)", requestDto.getOrderId());
+        String description = String.format("상품 구매로 인한 포인트 차감 (주문번호: %d)", requestDto.getOrderId());
 
         pointHistoryRepository.save(new PointHistory(
                 requestDto.getOrderId(),
@@ -121,12 +122,15 @@ public class PointServiceImpl implements PointService {
     public Long revertPoint(PointTransactionRequest requestDto){
         Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long amountRevertedPoint = requestDto.getAmount();
-        String description = "";
+
+        if (requestDto.getOrderId() == null) {
+            throw new BusinessException(POINT_NOT_ORDER_ID);
+        }
 
         // 잔액 환불
         long newPointBalance = member.getCurrentPoint() + amountRevertedPoint;
         member.setCurrentPoint(newPointBalance);
-        description = String.format("상품 환불 또는 취소로 인한 포인트 환불 (주문번호: %d)", requestDto.getOrderId());
+        String description = String.format("상품 환불 또는 취소로 인한 포인트 환불 (주문번호: %d)", requestDto.getOrderId());
 
         pointHistoryRepository.save(new PointHistory(
                 requestDto.getOrderId(),

@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.PointHistory;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.repository.PointHistoryRepository;
 import com.nhnacademy.member_server.service.impl.PointServiceImpl;
@@ -71,8 +73,9 @@ class PointServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> pointServiceImpl.usePoint(request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("포인트 잔액이 부족합니다");
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POINT_NOT_ENOUGH);
     }
 
     @Test

@@ -5,6 +5,7 @@ Content-Type: application/json
 
 {
   "memberId": 1,
+  "orderId": 1,
   "amount": 1000,
   "description": "테스트용 포인트 사용"
 }
@@ -16,6 +17,7 @@ Content-Type: application/json
 
 {
   "memberId": 1,
+  "orderId": 1,
   "amount": 1000,
   "description": "테스트용 포인트 환불"
 }
@@ -36,9 +38,10 @@ POST http://localhost:9002/internal/points/earn
 Content-Type: application/json
 
 {
-"memberId": 1,
-"pureAmount": 1000,
-"eventType": "ORDER"
+  "memberId": 1,
+  "orderId": 1,
+  "pureAmount": 10000,
+  "eventType": "ORDER"
 }
 
 ### 5. 일반 리뷰 적립 테스트 (200 포인트)
@@ -46,8 +49,8 @@ POST http://localhost:9002/internal/points/earn
 Content-Type: application/json
 
 {
-"memberId": 1,
-"eventType": "REVIEW"
+  "memberId": 1,
+  "eventType": "REVIEW"
 }
 
 ### 6. 사진 리뷰 적립 테스트 (500 포인트)
@@ -68,6 +71,3 @@ Content-Type: application/json
   "memberId": 1,
   "eventType": "SIGNUP"
 }
-
-
-
