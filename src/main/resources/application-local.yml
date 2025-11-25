@@ -15,16 +15,20 @@ spring:
     name: member-server
 
   datasource:
-    url: jdbc:mysql://10.116.64.14:13306/nhn_academy_19 # 내 로컬 DB
-    username: nhn_academy_19
-    password: 2/5l(ky6VP_bbyzZ
+    url: jdbc:mysql://localhost:3306/member_db?serverTimezone=Asia/Seoul
+    username: root
+    password: 123123123
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
-  # JPA/Hibernate 로그 설정 등 개발 편의 설정 추가
   jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
     defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
   sql:
     init:
       mode: always
@@ -35,6 +39,15 @@ spring:
       port: 6379
       password: '*N2vya7H@muDTwdNMR!'
       database: 19
+
+app:
+  rabbitmq:
+    enabled: false
+
+management:
+  health:
+    rabbit:
+      enabled: false
 
 eureka:
   client:
