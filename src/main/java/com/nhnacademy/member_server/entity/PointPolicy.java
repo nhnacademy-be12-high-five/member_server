@@ -33,9 +33,6 @@ public class PointPolicy {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-/*    @Column(nullable = false)
-    private BigDecimal defaultRate;*/
-
     @Column(nullable = false)
     private Integer signupPoint;
 
