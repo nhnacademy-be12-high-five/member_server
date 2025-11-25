@@ -1,25 +1,24 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.dto.CartAddRequest;
-import com.nhnacademy.member_server.dto.CartItemUpdateRequest;
-import com.nhnacademy.member_server.dto.CartListResponse;
+import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
+import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
+import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
 import com.nhnacademy.member_server.service.CartService;
 import com.nhnacademy.member_server.utils.CookieUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -29,30 +28,37 @@ public class CartController implements CartSwagger {
     private final CartService cartService;
 
     @PostMapping("/items")
-    public ResponseEntity<Void> add(@RequestBody CartAddRequest request,
+    public ResponseEntity<Void> addItemToCart(@RequestBody CartAddRequest request,
                                            HttpServletRequest httpRequest,
                                            HttpServletResponse httpResponse){
+        // 로그인 했으면 회원 정보
         Long memberId = getMemberId();
 
+        // 로그인 안했으면 쿠키 있는지 확인
         String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
 
-        // 비회원이고 카트가 만들어진적이 없다면 새로운 cartId를 리턴해줌
-        String newGuestId = cartService.addBookToCart(request, memberId, guestId);
-
-        // 여기서 cartId를 쿠키에 저장해주는 것
-        if(newGuestId != null){
-            CookieUtils.addCookie(httpResponse, "guestCookie", newGuestId, 60*60*24*30);
+        // 둘다 없으면 비회원 uuid(유일한 식별자) 생성
+        if (memberId == null && guestId == null) {
+            guestId = UUID.randomUUID().toString();
+            // 쿠키 굽기 (30일)
+            CookieUtils.addCookie(httpResponse, "guestCookie", guestId, 60 * 60 * 24 * 30);
         }
+
+        // 서비스 호출 request에 책 정보와 수량 담김
+        cartService.addToCart(request, memberId, guestId);
+
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    // 장바구니가 없으면 그냥 빈 리스트 반환
     @GetMapping
-    public ResponseEntity<CartListResponse> getCartItems(HttpServletRequest httpRequest){
+    public ResponseEntity<CartListResponse> getCartItems(HttpServletRequest httpRequest,
+                                                         Pageable pageable){
         Long memberId = getMemberId();
         String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
 
         CartListResponse cartList = cartService.getCartItemList(memberId, guestId);
-       return ResponseEntity.status(200).body(cartList);
+       return ResponseEntity.ok(cartList);
     }
 
     // 장바구니 비우기
