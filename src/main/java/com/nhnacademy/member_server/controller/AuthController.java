@@ -1,9 +1,10 @@
 package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.dto.request.LoginRequest;
-import com.nhnacademy.member_server.dto.request.SignupRequest;
+import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.LoginResponse;
 import com.nhnacademy.member_server.dto.response.TokenDto;
+import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/auth")
 public class AuthController {
 
+    private final MemberRepository memberRepository;
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
 
@@ -39,10 +41,16 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@RequestBody SignupRequest signupRequest) {
-        authServiceImpl.signup(signupRequest);
+    public ResponseEntity<Void> signup(@RequestBody MemberCreateRequest memberCreateRequest) {
+        authServiceImpl.signup(memberCreateRequest);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
+
+    @GetMapping("/check-id/{loginId}")
+    public ResponseEntity<Boolean> checkId(@PathVariable String loginId) {
+        return ResponseEntity.status(201).body(memberRepository.existsByLoginId(loginId));
+    }
+
 
     @PostMapping("/reissue")
     public ResponseEntity<LoginResponse> reissue(

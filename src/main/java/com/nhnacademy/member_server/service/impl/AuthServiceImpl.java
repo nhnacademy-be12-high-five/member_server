@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.service.impl;
 
-import com.nhnacademy.member_server.dto.request.SignupRequest;
+import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.TokenDto;
 import com.nhnacademy.member_server.entity.Grade;
 import com.nhnacademy.member_server.entity.Member;
@@ -71,7 +71,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void signup(SignupRequest request) {
+    public void signup(MemberCreateRequest request) {
         if (memberRepository.existsByLoginId(request.getLoginId())) {
             throw new RuntimeException("이미 존재하는 아이디입니다.");
         }
