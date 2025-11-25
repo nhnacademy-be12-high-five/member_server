@@ -3,7 +3,7 @@ package com.nhnacademy.member_server.controller;
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.dto.response.PointTransactionResponse;
-import com.nhnacademy.member_server.service.PointService;
+import com.nhnacademy.member_server.service.impl.PointServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/internal/points")
 public class PointInternalController {
 
-    private final PointService pointService;
+    private final PointServiceImpl pointServiceImpl;
 
     @Operation(summary = "포인트 적립", description = "주문 완료 / 리뷰 작성 / 회원가입 시 포인트를 적립합니다.")
     @ApiResponses(value = {
@@ -30,10 +30,13 @@ public class PointInternalController {
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     @PostMapping("/earn")
-    public ResponseEntity<Void> earnPoint(@RequestBody PointEarnRequest requestDto){
-        pointService.earnPoint(requestDto);
+    public ResponseEntity<PointTransactionResponse> earnPoint(@RequestBody PointEarnRequest requestDto){
+        Long remainingBalance = pointServiceImpl.earnPoint(requestDto);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new PointTransactionResponse(
+                requestDto.getMemberId(),
+                remainingBalance
+        ));
     }
 
     @Operation(summary = "포인트 사용 (차감)", description = "최종 결제 전 포인트를 차감합니다.")
@@ -46,7 +49,7 @@ public class PointInternalController {
     @PostMapping("/use")
     public ResponseEntity<PointTransactionResponse> usePoint(@RequestBody PointTransactionRequest requestDto){
 
-        PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), pointService.usePoint(requestDto));
+        PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), pointServiceImpl.usePoint(requestDto));
 
         return ResponseEntity.ok(responseDto);
     }
@@ -60,7 +63,7 @@ public class PointInternalController {
     @PostMapping("/revert")
     public ResponseEntity<PointTransactionResponse> revertPoint(@RequestBody PointTransactionRequest requestDto){
 
-        PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), pointService.revertPoint(requestDto));
+        PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), pointServiceImpl.revertPoint(requestDto));
 
         return ResponseEntity.ok(responseDto);
     }
