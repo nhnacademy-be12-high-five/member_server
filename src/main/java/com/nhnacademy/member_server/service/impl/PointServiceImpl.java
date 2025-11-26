@@ -6,6 +6,8 @@ import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_POLICY;
 
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
+import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
@@ -18,6 +20,8 @@ import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.PointService;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -140,5 +144,31 @@ public class PointServiceImpl implements PointService {
                 newPointBalance
         ));
         return newPointBalance;
+    }
+
+
+    @Transactional(readOnly = true)
+    public PointBalanceResponse getBalance(Long memberId){
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        return new PointBalanceResponse(member.getId(), member.getCurrentPoint());
+    }
+
+
+    @Transactional(readOnly = true)
+    public Page<PointHistoryResponse> getHistory(Long memberId, Pageable pageable){
+        memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        Page<PointHistory> historyPage = pointHistoryRepository.findAllByMemberId(memberId, pageable);
+
+        // Page 객체의 map 메서드로 리스트 안의 내용물을 하나씩 바꿈
+        return historyPage.map(entity -> new PointHistoryResponse(
+                entity.getId(),
+                entity.getAmount(),
+                entity.getDescription(),
+                entity.getPointBalance(), // DTO - currentPoint
+                entity.getCreatedAt(),    // DTO - transactionDate
+                entity.getOrderId()
+        ));
     }
 }
