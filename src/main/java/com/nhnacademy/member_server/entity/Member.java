@@ -39,6 +39,12 @@ public class Member {
     private String password;
 
     @Setter
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10, nullable = false)
+    @Builder.Default
+    private Gender gender = Gender.UNKNOWN;
+
+    @Setter
     @NotNull
     @Column(nullable = false, length = 20)
     private String phone;
