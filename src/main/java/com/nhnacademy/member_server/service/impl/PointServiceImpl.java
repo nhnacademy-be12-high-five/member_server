@@ -33,6 +33,7 @@ public class PointServiceImpl implements PointService {
     private final PointHistoryRepository pointHistoryRepository;
     private final PointPolicyRepository pointPolicyRepository;
 
+    @Override
     public Long earnPoint(PointEarnRequest requestDto){
         Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long pointToEarn = 0;
@@ -95,7 +96,7 @@ public class PointServiceImpl implements PointService {
         return member.getCurrentPoint();
     }
 
-
+    @Override
     public Long usePoint(PointTransactionRequest requestDto){
         Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long amountUsedPoint = requestDto.getAmount();
@@ -122,7 +123,7 @@ public class PointServiceImpl implements PointService {
         return newPointBalance;
     }
 
-
+    @Override
     public Long revertPoint(PointTransactionRequest requestDto){
         Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long amountRevertedPoint = requestDto.getAmount();
@@ -146,18 +147,18 @@ public class PointServiceImpl implements PointService {
         return newPointBalance;
     }
 
-
+    @Override
     @Transactional(readOnly = true)
     public PointBalanceResponse getBalance(Long memberId){
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Member member = memberRepository.readById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
         return new PointBalanceResponse(member.getId(), member.getCurrentPoint());
     }
 
-
+    @Override
     @Transactional(readOnly = true)
     public Page<PointHistoryResponse> getHistory(Long memberId, Pageable pageable){
-        memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        memberRepository.readById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
         Page<PointHistory> historyPage = pointHistoryRepository.findAllByMemberId(memberId, pageable);
 
