@@ -2,6 +2,7 @@ package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.dto.response.MemberResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
+import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.service.AuthService;
 import com.nhnacademy.member_server.service.MemberService;
 import lombok.RequiredArgsConstructor;
@@ -51,11 +52,11 @@ public class MemberController {
 
 
     @DeleteMapping("/withdraw")
-    public ResponseEntity<Void> withdraw(@AuthenticationPrincipal MemberPrincipal principal) {
+    public ResponseEntity<Void> withdraw(@AuthenticationPrincipal MemberPrincipal principal,
+                                         @RequestHeader(HttpHeaders.AUTHORIZATION) String bearerHeader) {
         Long memberId = principal.getMemberId();
-
+        authService.logout(WebUtils.getToken(bearerHeader), memberId);
         memberService.withdraw(memberId);
-        authService.logout(memberId);
 
         ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
                 .path("/")

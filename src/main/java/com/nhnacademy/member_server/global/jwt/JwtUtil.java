@@ -46,6 +46,16 @@ public class JwtUtil {
                 .compact();
     }
 
+    public long getRemainingTime(String token) {
+        try {
+            Date expiration = getClaims(token).getExpiration();
+            long now = new Date().getTime();
+            return expiration.getTime() - now;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public String createRefreshToken(Long memberId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + refreshExpirationTime);

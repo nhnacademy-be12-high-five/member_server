@@ -4,8 +4,9 @@ import com.nhnacademy.member_server.dto.request.LoginRequest;
 import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.LoginResponse;
 import com.nhnacademy.member_server.dto.response.TokenDto;
+import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.repository.MemberRepository;
-import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
+import com.nhnacademy.member_server.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -30,11 +31,11 @@ public class AuthController {
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
 
-    private final AuthServiceImpl authServiceImpl;
+    private final AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
-        TokenDto tokenDto = authServiceImpl.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
+        TokenDto tokenDto = authService.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
         ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
@@ -49,7 +50,7 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<Void> signup(@RequestBody MemberCreateRequest memberCreateRequest) {
-        authServiceImpl.signup(memberCreateRequest);
+        authService.signup(memberCreateRequest);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -67,7 +68,7 @@ public class AuthController {
             throw new RuntimeException("Refresh Token 쿠키가 없습니다.");
         }
 
-        TokenDto tokenDto = authServiceImpl.reissue(refreshToken);
+        TokenDto tokenDto = authService.reissue(refreshToken);
 
         ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
                 .httpOnly(true)
@@ -84,8 +85,9 @@ public class AuthController {
 
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestHeader(name = "X-User-ID") long loginId) {
-        authServiceImpl.logout(loginId);
+    public ResponseEntity<Void> logout(@RequestHeader(name = "X-User-ID") long loginId,
+                                       @RequestHeader(HttpHeaders.AUTHORIZATION) String bearerHeader) {
+        authService.logout(WebUtils.getToken(bearerHeader), loginId);
         ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
                 .path("/")
                 .httpOnly(true)

@@ -134,8 +134,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(Long memberId) {
+    public void logout(String accessToken, Long memberId) {
         redisTemplate.delete("RT:" + memberId);
+        long expiration = jwtUtil.getRemainingTime(accessToken);
+        if (expiration > 0) {
+            redisTemplate.opsForValue().set(accessToken, "logout", expiration, TimeUnit.MILLISECONDS);
+        }
     }
 
 
