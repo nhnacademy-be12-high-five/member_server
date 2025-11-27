@@ -18,6 +18,7 @@ public class PointInternalController implements PointInternalSwagger{
 
     private final PointService pointService;
 
+    @Override
     @PostMapping("/earn")
     public ResponseEntity<PointTransactionResponse> earnPoint(@RequestBody PointEarnRequest requestDto){
 
@@ -26,6 +27,7 @@ public class PointInternalController implements PointInternalSwagger{
         return ResponseEntity.ok(responseDto);
     }
 
+    @Override
     @PostMapping("/use")
     public ResponseEntity<PointTransactionResponse> usePoint(@RequestBody PointTransactionRequest requestDto){
 
@@ -34,6 +36,7 @@ public class PointInternalController implements PointInternalSwagger{
         return ResponseEntity.ok(responseDto);
     }
 
+    @Override
     @PostMapping("/revert")
     public ResponseEntity<PointTransactionResponse> revertPoint(@RequestBody PointTransactionRequest requestDto){
 
