@@ -12,7 +12,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByLoginId(String loginId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({@QueryHint(name = "javax.persistence.lock.timeout", value = "3000")})
     Optional<Member> findById(Long id);
 
     boolean existsByLoginId(String loginId);
