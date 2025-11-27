@@ -9,8 +9,11 @@ import static org.mockito.Mockito.when;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.PointHistory;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.repository.PointHistoryRepository;
+import com.nhnacademy.member_server.service.impl.PointServiceImpl;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class PointServiceTest {
+class PointServiceImplTest {
 
     @Mock
     private MemberRepository memberRepository;
@@ -29,7 +32,7 @@ class PointServiceTest {
     private PointHistoryRepository pointHistoryRepository;
 
     @InjectMocks
-    private PointService pointService;
+    private PointServiceImpl pointServiceImpl;
 
     @Test
     @DisplayName("포인트 사용 성공 테스트")
@@ -44,10 +47,10 @@ class PointServiceTest {
 
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-        PointTransactionRequest request = new PointTransactionRequest(memberId, useAmount, "테스트 사용");
+        PointTransactionRequest request = new PointTransactionRequest(memberId, useAmount, 1L);
 
         // when
-        Long remainPoint = pointService.usePoint(request);
+        Long remainPoint = pointServiceImpl.usePoint(request);
 
         // then
         assertThat(remainPoint).isEqualTo(5000L);
@@ -66,12 +69,13 @@ class PointServiceTest {
 
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-        PointTransactionRequest request = new PointTransactionRequest(memberId, 5000L, "테스트");
+        PointTransactionRequest request = new PointTransactionRequest(memberId, 5000L, 1L);
 
         // when & then
-        assertThatThrownBy(() -> pointService.usePoint(request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("포인트 잔액이 부족합니다");
+        assertThatThrownBy(() -> pointServiceImpl.usePoint(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POINT_NOT_ENOUGH);
     }
 
     @Test
@@ -84,10 +88,10 @@ class PointServiceTest {
 
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
-        PointTransactionRequest request = new PointTransactionRequest(memberId, 1000L, "환불");
+        PointTransactionRequest request = new PointTransactionRequest(memberId, 1000L, 1L);
 
         // when
-        Long result = pointService.revertPoint(request);
+        Long result = pointServiceImpl.revertPoint(request);
 
         // then
         assertThat(result).isEqualTo(6000L); // 5000 + 1000
