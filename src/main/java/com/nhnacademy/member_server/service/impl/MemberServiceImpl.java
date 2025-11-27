@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.service.impl;
 
+import com.nhnacademy.member_server.dto.response.MemberResponse;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.Status;
 import com.nhnacademy.member_server.repository.MemberRepository;
@@ -22,5 +23,14 @@ public class MemberServiceImpl implements MemberService {
 
         member.setStatus(Status.WITHDRAWAL);
 
+    }
+
+    @Override
+    @Transactional
+    public MemberResponse getMember(Long memberId) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
+        MemberResponse memberResponse = MemberResponse.from(member);
+
+        return memberResponse;
     }
 }
