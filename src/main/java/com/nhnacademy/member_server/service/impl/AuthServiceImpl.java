@@ -53,14 +53,14 @@ public class AuthServiceImpl implements AuthService {
 
         member.setLastLoginAt(LocalDateTime.now());
 
-        Long userId = userDetails.getMember().getId();
+        Long memberId = userDetails.getMember().getId();
         Role role = userDetails.getMember().getRole();
 
-        String accessToken = jwtUtil.createAccessToken(userId, role);
-        String refreshToken = jwtUtil.createRefreshToken(userId);
+        String accessToken = jwtUtil.createAccessToken(memberId, role, loginId);
+        String refreshToken = jwtUtil.createRefreshToken(memberId);
 
         redisTemplate.opsForValue().set(
-                "RT:" + userId,
+                "RT:" + memberId,
                 refreshToken,
                 refreshExpirationTime,
                 TimeUnit.MILLISECONDS
@@ -79,16 +79,19 @@ public class AuthServiceImpl implements AuthService {
         Grade basicGrade = gradeRepository.findByGradeName("GENERAL")
                 .orElseThrow(() -> new RuntimeException("기본 등급이 DB에 없습니다."));
 
+        Role finalRole = (request.getRole() != null) ? request.getRole() : Role.USER;
+
         Member member = Member.builder()
                 .loginId(request.getLoginId())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
+                .gender(request.getGender())
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .birthDate(request.getBirthDate())
                 .lastLoginAt(LocalDateTime.now())
                 .status(Status.ACTIVE)
-                .role(Role.USER)
+                .role(finalRole)
                 .currentPoint(0L)
                 .grade(basicGrade)
                 .build();
@@ -104,25 +107,25 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("유효하지 않은 Refresh Token입니다.");
         }
 
-        Long userId = jwtUtil.getUserId(refreshToken);
-        String redisToken = redisTemplate.opsForValue().get("RT:" + userId);
+        Long memberId = jwtUtil.getUserId(refreshToken);
+        String redisToken = redisTemplate.opsForValue().get("RT:" + memberId);
 
         if (redisToken == null || !redisToken.equals(refreshToken)) {
             throw new RuntimeException("토큰이 만료되었거나 일치하지 않습니다.");
         }
 
-        Member member = memberRepository.findById(userId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
 
         if (member.getStatus().equals(Status.WITHDRAWAL)) {
             throw new RuntimeException("탈퇴된 회원입니다.");
         }
 
-        String newAccessToken = jwtUtil.createAccessToken(member.getId(), member.getRole());
+        String newAccessToken = jwtUtil.createAccessToken(member.getId(), member.getRole(), member.getLoginId());
         String newRefreshToken = jwtUtil.createRefreshToken(member.getId());
 
         redisTemplate.opsForValue().set(
-                "RT:" + userId,
+                "RT:" + memberId,
                 newRefreshToken,
                 refreshExpirationTime,
                 TimeUnit.MILLISECONDS
@@ -132,8 +135,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(Long userId) {
-        redisTemplate.delete("RT:" + userId);
+    public void logout(Long memberId) {
+        redisTemplate.delete("RT:" + memberId);
     }
 
 
