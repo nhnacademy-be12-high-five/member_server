@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@Tag(name = "Point Internal API", description = "내부 시스템용 포인트 처리 API 결제/주문 서버용")
+@Tag(name = "Point Internal API", description = "다른 서버에서 호출할 포인트 처리 API")
 public interface PointInternalSwagger {
 
     @Operation(summary = "포인트 적립", description = "주문 완료 / 리뷰 작성 / 회원가입 시 포인트를 적립합니다.")
