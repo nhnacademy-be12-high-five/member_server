@@ -35,10 +35,10 @@ class MemberControllerTest {
     @Test
     @DisplayName("마이페이지 조회 (Gateway 헤더 필수)")
     void getMyPage_success() throws Exception {
-        Long userId = 123L;
+        Long memberId = 123L;
 
-        mockMvc.perform(get("/users/my-page")
-                        .header("X-User-ID", userId))
+        mockMvc.perform(get("/members/my-page")
+                        .header("X-User-ID", memberId))
                 .andExpect(status().isOk());
     }
 
@@ -47,7 +47,7 @@ class MemberControllerTest {
     void withdraw_success() throws Exception {
         Long userId = 123L;
 
-        mockMvc.perform(delete("/users/withdraw")
+        mockMvc.perform(delete("/members/withdraw")
                         .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(cookie().maxAge("refresh-token", 0));
