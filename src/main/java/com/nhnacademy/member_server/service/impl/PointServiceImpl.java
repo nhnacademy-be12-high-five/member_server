@@ -35,7 +35,7 @@ public class PointServiceImpl implements PointService {
 
     @Override
     public Long earnPoint(PointEarnRequest requestDto){
-        Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long pointToEarn = 0;
         String description = "";
         Long orderIdToSave = null;
@@ -98,7 +98,7 @@ public class PointServiceImpl implements PointService {
 
     @Override
     public Long usePoint(PointTransactionRequest requestDto){
-        Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long amountUsedPoint = requestDto.getAmount();
 
         // 검증
@@ -125,7 +125,7 @@ public class PointServiceImpl implements PointService {
 
     @Override
     public Long revertPoint(PointTransactionRequest requestDto){
-        Member member = memberRepository.findById(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long amountRevertedPoint = requestDto.getAmount();
 
         if (requestDto.getOrderId() == null) {
@@ -150,7 +150,7 @@ public class PointServiceImpl implements PointService {
     @Override
     @Transactional(readOnly = true)
     public PointBalanceResponse getBalance(Long memberId){
-        Member member = memberRepository.readById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
         return new PointBalanceResponse(member.getId(), member.getCurrentPoint());
     }
@@ -158,7 +158,7 @@ public class PointServiceImpl implements PointService {
     @Override
     @Transactional(readOnly = true)
     public Page<PointHistoryResponse> getHistory(Long memberId, Pageable pageable){
-        memberRepository.readById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
         Page<PointHistory> historyPage = pointHistoryRepository.findAllByMemberId(memberId, pageable);
 
