@@ -71,3 +71,21 @@ Content-Type: application/json
   "memberId": 1,
   "eventType": "SIGNUP"
 }
+
+
+
+### 8. 내 포인트 잔액 조회
+GET http://localhost:9002/api/points/balance
+X-USER-ID: 1
+
+### 9. 내 포인트 이력 조회 (기본값: 0페이지, 10개)
+GET http://localhost:9002/api/points/history
+X-USER-ID: 1
+
+### 10. 내 포인트 이력 조회 (페이징 테스트)
+GET http://localhost:9002/api/points/history?page=5&size=10
+X-USER-ID: 1
+
+### 11. 없는 유저 조회 테스트 (예외 발생)
+GET http://localhost:9002/api/points/balance
+X-USER-ID: 99999
