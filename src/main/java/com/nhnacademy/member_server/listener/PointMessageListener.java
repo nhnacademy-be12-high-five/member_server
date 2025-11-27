@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.listener;
 
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
-import com.nhnacademy.member_server.service.impl.PointServiceImpl;
+import com.nhnacademy.member_server.service.PointService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -13,14 +13,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "app.rabbitmq.enabled", havingValue = "true")
 public class PointMessageListener {
-    private final PointServiceImpl pointServiceImpl;
+    private final PointService pointService;
 
     @RabbitListener(queues = "point-queue")
     public void receiveMessage(PointEarnRequest requestDto){
-        log.info("RabbitMQ 메시지 수신: memberId={}, amount={}", requestDto.getMemberId(), requestDto.getPureAmount());
+        log.info("RabbitMQ 메시지 수신: type=[{}], memberId=[{}], amount=[{}]",
+                requestDto.getEventType(), requestDto.getMemberId(), requestDto.getPureAmount());
 
         try {
-            pointServiceImpl.earnPoint(requestDto);
+            pointService.earnPoint(requestDto);
             log.info("포인트 적립 완료");
         } catch (Exception e) {
             log.error("포인트 적립 실패", e);
