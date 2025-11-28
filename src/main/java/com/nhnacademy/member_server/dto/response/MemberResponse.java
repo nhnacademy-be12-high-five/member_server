@@ -2,10 +2,9 @@ package com.nhnacademy.member_server.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.nhnacademy.member_server.entity.Member;
+import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDate;
 
 @Builder
 @Getter

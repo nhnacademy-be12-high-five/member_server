@@ -1,4 +1,4 @@
-### 1. 포인트 사용 (차감) 테스트
+### 1 결제 - 포인트 사용
 # 기대 결과: 200 OK / DB 잔액 9000원
 POST http://localhost:9002/internal/points/use
 Content-Type: application/json
@@ -6,11 +6,10 @@ Content-Type: application/json
 {
   "memberId": 1,
   "orderId": 1,
-  "amount": 1000,
-  "description": "테스트용 포인트 사용"
+  "amount": 1000
 }
 
-### 2. 포인트 환불 (롤백) 테스트
+### 1.1 결제 취소 - 포인트 복구
 # 기대 결과: 200 OK / DB 잔액 다시 10000원
 POST http://localhost:9002/internal/points/revert
 Content-Type: application/json
@@ -18,74 +17,86 @@ Content-Type: application/json
 {
   "memberId": 1,
   "orderId": 1,
-  "amount": 1000,
-  "description": "테스트용 포인트 환불"
+  "amount": 1000
 }
 
-### 3. 잔액 부족 테스트 (예외 발생)
+### 1.2 잔액 부족 테스트 (예외 발생)
 # 기대 결과: 500 Error
 POST http://localhost:9002/internal/points/use
 Content-Type: application/json
 
 {
   "memberId": 1,
-  "amount": 9999999,
-  "description": "테스트용 포인트 사용"
-}
-
-### 4. 주문 적립 테스트 (등급 비율)
-POST http://localhost:9002/internal/points/earn
-Content-Type: application/json
-
-{
-  "memberId": 1,
   "orderId": 1,
-  "pureAmount": 10000,
-  "eventType": "ORDER"
+  "amount": 1000
 }
 
-### 5. 일반 리뷰 적립 테스트 (200 포인트)
+
+
+### 2 주문 적립 (등급 비율)
 POST http://localhost:9002/internal/points/earn
 Content-Type: application/json
 
 {
   "memberId": 1,
-  "eventType": "REVIEW"
+  "eventType": "EARN_ORDER",
+  "pureAmount": 50000,
+  "orderId": 102
 }
 
-### 6. 사진 리뷰 적립 테스트 (500 포인트)
+### 2.1 주문 반품
 POST http://localhost:9002/internal/points/earn
 Content-Type: application/json
 
 {
   "memberId": 1,
-  "eventType": "PHOTO_REVIEW"
+  "eventType": "EARN_REFUND",
+  "pureAmount": 5000,
+  "orderId": 102
 }
 
-
-### 7. 회원가입 적립 테스트 (5000 포인트)
+### 2.2 일반 리뷰 적립 (200 포인트)
 POST http://localhost:9002/internal/points/earn
 Content-Type: application/json
 
 {
   "memberId": 1,
-  "eventType": "SIGNUP"
+  "eventType": "EARN_REVIEW"
+}
+
+### 2.3 사진 리뷰 적립 (500 포인트)
+POST http://localhost:9002/internal/points/earn
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "eventType": "EARN_PHOTO_REVIEW"
+}
+
+
+### 2.4 회원가입 적립 (5000 포인트)
+POST http://localhost:9002/internal/points/earn
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "eventType": "EARN_SIGNUP"
 }
 
 
 
-### 8. 내 포인트 잔액 조회
+### 3. 내 포인트 잔액 조회
 GET http://localhost:9002/api/points/balance
 X-USER-ID: 1
 
-### 9. 내 포인트 이력 조회 (기본값: 0페이지, 10개)
+### 3.1. 내 포인트 이력 조회 (기본값: 0페이지, 10개)
 GET http://localhost:9002/api/points/history
 X-USER-ID: 1
 
-### 10. 내 포인트 이력 조회 (페이징 테스트)
+### 3.2. 내 포인트 이력 조회 (페이징 테스트)
 GET http://localhost:9002/api/points/history?page=5&size=10
 X-USER-ID: 1
 
-### 11. 없는 유저 조회 테스트 (예외 발생)
+### 3.3. 없는 유저 조회 테스트 (예외 발생)
 GET http://localhost:9002/api/points/balance
 X-USER-ID: 99999

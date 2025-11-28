@@ -22,6 +22,7 @@ public class PointController implements PointSwagger{
 
     private final PointService pointService;
 
+    @Override
     @GetMapping("/balance")
     public ResponseEntity<PointBalanceResponse> getMyBalance(@RequestHeader("X-USER-ID") Long memberId){
 
@@ -30,6 +31,7 @@ public class PointController implements PointSwagger{
         return ResponseEntity.ok(responseDto);
     }
 
+    @Override
     @GetMapping("/history")
     public ResponseEntity<Page<PointHistoryResponse>> getMyHistory(@RequestHeader("X-USER-ID") Long memberId,
                                                              @RequestParam(defaultValue = "0") int page,
