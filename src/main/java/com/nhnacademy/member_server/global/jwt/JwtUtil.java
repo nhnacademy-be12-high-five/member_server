@@ -24,7 +24,7 @@ public class JwtUtil {
 
     public JwtUtil(@Value("${jwt.secret}") String secret,
                    @Value("${jwt.expiration_time}") Long accessExpirationTime,
-                   @Value("${jwt.refresh_expiration_time}") Long refreshExpirationTime) { // ★ 2개 받기
+                   @Value("${jwt.refresh_expiration_time}") Long refreshExpirationTime) {
 
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessExpirationTime = accessExpirationTime;
@@ -32,25 +32,36 @@ public class JwtUtil {
     }
 
     //여기서는 Pk로 넣어줘야함 그래야 토큰에서 빼와서 x user id로 검증
-    public String createAccessToken(Long userId, Role role) {
+    public String createAccessToken(Long memberId, Role role, String loginId) {
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + accessExpirationTime);
 
         return Jwts.builder()
-                .setSubject(String.valueOf(userId))
+                .setSubject(String.valueOf(memberId))
                 .claim("role", role.name())
+                .claim("loginId", loginId)
                 .setIssuedAt(now)
                 .setExpiration(expirationDate)
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String createRefreshToken(Long userId) {
+    public long getRemainingTime(String token) {
+        try {
+            Date expiration = getClaims(token).getExpiration();
+            long now = new Date().getTime();
+            return expiration.getTime() - now;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public String createRefreshToken(Long memberId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + refreshExpirationTime);
 
         return Jwts.builder()
-                .setSubject(String.valueOf(userId))
+                .setSubject(String.valueOf(memberId))
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(secretKey, SignatureAlgorithm.HS256)

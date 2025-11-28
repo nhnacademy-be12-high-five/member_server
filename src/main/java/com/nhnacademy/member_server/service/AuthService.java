@@ -10,5 +10,5 @@ public interface AuthService {
 
     TokenDto reissue(String refreshToken);
 
-    void logout(Long userId);
+    void logout(String accessToken, Long userId);
 }
