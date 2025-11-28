@@ -1,6 +1,8 @@
 package com.nhnacademy.member_server.service.impl;
 
+import static com.nhnacademy.member_server.exception.ErrorCode.INVALID_INPUT_VALUE;
 import static com.nhnacademy.member_server.exception.ErrorCode.MEMBER_NOT_FOUND;
+import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ENOUGH;
 import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ORDER_ID;
 import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_POLICY;
 
@@ -13,7 +15,6 @@ import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
 import com.nhnacademy.member_server.entity.PointPolicy;
 import com.nhnacademy.member_server.exception.BusinessException;
-import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.repository.PointHistoryRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
@@ -37,45 +38,41 @@ public class PointServiceImpl implements PointService {
     public Long earnPoint(PointEarnRequest requestDto){
         Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long pointToEarn = 0;
-        String description = "";
+        String description = requestDto.getEventType().getDescription();
         Long orderIdToSave = null;
 
-        // 상품 구매 시 등급별 비율 적용 적립
-        if(requestDto.getEventType() == PointEventType.ORDER){
-            BigDecimal rate = member.getGrade().getPointRate();
+        switch (requestDto.getEventType()){
+            // 상품 구매 시 등급별 비율 적용 적립
+            case EARN_ORDER -> {
+                validateOrderRequest(requestDto);
 
-            if(requestDto.getPureAmount() != null){
+                BigDecimal rate = member.getGrade().getPointRate();
                 pointToEarn = BigDecimal.valueOf(requestDto.getPureAmount())
                         .multiply(rate)
                         .longValue();
+                orderIdToSave = requestDto.getOrderId();
+                description = String.format("%s (주문번호: %d)", description, requestDto.getOrderId());
             }
-            if (requestDto.getOrderId() == null) {
-                throw new BusinessException(POINT_NOT_ORDER_ID);
-            }
-            orderIdToSave = requestDto.getOrderId();
-            description = String.format("상품 구매로 인한 포인트 적립 (주문번호: %d)", requestDto.getOrderId());
-        }
-        // 이벤트 (리뷰, 회원가입)
-        else{
-            PointPolicy policy  = pointPolicyRepository.findTopByOrderByUpdatedAtDesc();
+            // 상품 반품으로 인한 포인트 적립
+            case EARN_REFUND -> {
+                validateOrderRequest(requestDto);
 
-            if(policy == null){
-                throw new BusinessException(POINT_NOT_POLICY);
-            } else{
-                switch (requestDto.getEventType()){
-                    case REVIEW ->  {
-                        pointToEarn = policy.getReviewPoint();
-                        description = "리뷰 작성 적립";
-                    }
-                    case PHOTO_REVIEW -> {
-                        pointToEarn = policy.getPhotoPoint();
-                        description = "사진 리뷰 작성 적립";
-                    }
-                    case SIGNUP -> {
-                        pointToEarn = policy.getSignupPoint();
-                        description = "회원가입 축하 적립";
-                    }
+                pointToEarn = requestDto.getPureAmount();
+                orderIdToSave = requestDto.getOrderId();
+                description = String.format("%s (주문번호: %d)", description, orderIdToSave);
+            }
+            default -> {
+                PointPolicy policy = pointPolicyRepository.findTopByOrderByUpdatedAtDesc();
+                if (policy == null) {
+                    throw new BusinessException(POINT_NOT_POLICY);
                 }
+
+                pointToEarn = switch (requestDto.getEventType()) {
+                    case EARN_REVIEW -> policy.getReviewPoint();
+                    case EARN_PHOTO_REVIEW -> policy.getPhotoPoint();
+                    case EARN_SIGNUP -> policy.getSignupPoint();
+                    default -> 0L;
+                };
             }
         }
 
@@ -89,6 +86,7 @@ public class PointServiceImpl implements PointService {
                     member,
                     pointToEarn,
                     description,
+                    requestDto.getEventType(),
                     newPointBalance
             ));
             return newPointBalance;
@@ -98,26 +96,28 @@ public class PointServiceImpl implements PointService {
 
     @Override
     public Long usePoint(PointTransactionRequest requestDto){
+        validateTransactionRequest(requestDto);
+
         Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
         long amountUsedPoint = requestDto.getAmount();
 
-        // 검증
         if(member.getCurrentPoint() < amountUsedPoint){
-            throw new BusinessException(ErrorCode.POINT_NOT_ENOUGH);
+            throw new BusinessException(POINT_NOT_ENOUGH);
         }
-        if (requestDto.getOrderId() == null) {
-            throw new BusinessException(POINT_NOT_ORDER_ID);
-        }
+
         // 잔액 차감
         long newPointBalance = member.getCurrentPoint() - amountUsedPoint;
         member.setCurrentPoint(newPointBalance);
-        String description = String.format("상품 구매로 인한 포인트 차감 (주문번호: %d)", requestDto.getOrderId());
+
+        String description = String.format("%s (주문번호: %d)",PointEventType.USE_ORDER.getDescription(), requestDto.getOrderId());
 
         pointHistoryRepository.save(new PointHistory(
                 requestDto.getOrderId(),
                 member,
-                -amountUsedPoint,
+                -amountUsedPoint, // 사용 -> 음수저장
                 description,
+                PointEventType.USE_ORDER,
                 newPointBalance
         ));
         return newPointBalance;
@@ -125,27 +125,29 @@ public class PointServiceImpl implements PointService {
 
     @Override
     public Long revertPoint(PointTransactionRequest requestDto){
-        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-        long amountRevertedPoint = requestDto.getAmount();
+        validateTransactionRequest(requestDto);
 
-        if (requestDto.getOrderId() == null) {
-            throw new BusinessException(POINT_NOT_ORDER_ID);
-        }
+        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        long amountRevertedPoint = requestDto.getAmount();
 
         // 잔액 환불
         long newPointBalance = member.getCurrentPoint() + amountRevertedPoint;
         member.setCurrentPoint(newPointBalance);
-        String description = String.format("상품 환불 또는 취소로 인한 포인트 환불 (주문번호: %d)", requestDto.getOrderId());
+
+        String description = String.format("%s (주문번호: %d)",PointEventType.REVERT_ORDER.getDescription(), requestDto.getOrderId());
 
         pointHistoryRepository.save(new PointHistory(
                 requestDto.getOrderId(),
                 member,
                 amountRevertedPoint,
                 description,
+                PointEventType.REVERT_ORDER,
                 newPointBalance
         ));
         return newPointBalance;
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -171,5 +173,22 @@ public class PointServiceImpl implements PointService {
                 entity.getCreatedAt(),    // DTO - transactionDate
                 entity.getOrderId()
         ));
+    }
+
+
+    // 검증 메서드
+    private void validateOrderRequest(PointEarnRequest requestDto) {
+        if (requestDto.getPureAmount() == null || requestDto.getOrderId() == null) {
+            throw new BusinessException(INVALID_INPUT_VALUE);
+        }
+    }
+
+    private void validateTransactionRequest(PointTransactionRequest requestDto) {
+        if (requestDto.getOrderId() == null) {
+            throw new BusinessException(POINT_NOT_ORDER_ID);
+        }
+        if (requestDto.getAmount() == null || requestDto.getAmount() <= 0) {
+            throw new BusinessException(INVALID_INPUT_VALUE);
+        }
     }
 }
