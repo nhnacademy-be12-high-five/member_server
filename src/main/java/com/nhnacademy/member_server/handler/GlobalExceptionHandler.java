@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    //
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e){
         log.warn("BusinessException: {}", e.getErrorCode().getMessage());

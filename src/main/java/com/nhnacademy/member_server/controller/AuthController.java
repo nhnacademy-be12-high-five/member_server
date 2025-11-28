@@ -1,0 +1,103 @@
+package com.nhnacademy.member_server.controller;
+
+import com.nhnacademy.member_server.dto.request.LoginRequest;
+import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
+import com.nhnacademy.member_server.dto.response.LoginResponse;
+import com.nhnacademy.member_server.dto.response.TokenDto;
+import com.nhnacademy.member_server.global.jwt.WebUtils;
+import com.nhnacademy.member_server.repository.MemberRepository;
+import com.nhnacademy.member_server.service.AuthService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/auth")
+public class AuthController {
+
+    private final MemberRepository memberRepository;
+    @Value("${jwt.refresh_expiration_time}")
+    private Long refreshExpirationTime;
+
+    private final AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
+        TokenDto tokenDto = authService.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
+        ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(refreshExpirationTime)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(new LoginResponse(tokenDto.getAccessToken()));
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<Void> signup(@RequestBody MemberCreateRequest memberCreateRequest) {
+        authService.signup(memberCreateRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping("/check-id/{loginId}")
+    public ResponseEntity<Boolean> checkId(@PathVariable String loginId) {
+        return ResponseEntity.status(201).body(memberRepository.existsByLoginId(loginId));
+    }
+
+
+    @PostMapping("/reissue")
+    public ResponseEntity<LoginResponse> reissue(
+            @CookieValue(name = "refresh-token", required = false) String refreshToken
+    ) {
+        if (refreshToken == null) {
+            throw new RuntimeException("Refresh Token 쿠키가 없습니다.");
+        }
+
+        TokenDto tokenDto = authService.reissue(refreshToken);
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
+                .httpOnly(true)
+                .secure(false)
+                //secure 부분은 배포상태에서 https 사용하면 true로 변경해주기
+                .path("/")
+                .maxAge(refreshExpirationTime)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(new LoginResponse(tokenDto.getAccessToken()));
+    }
+
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestHeader(name = "X-User-ID") long loginId,
+                                       @RequestHeader(HttpHeaders.AUTHORIZATION) String bearerHeader) {
+        authService.logout(WebUtils.getToken(bearerHeader), loginId);
+        ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
+                .path("/")
+                .httpOnly(true)
+                .secure(false)
+                .maxAge(0)
+                .build();
+
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .build();
+    }
+
+
+}

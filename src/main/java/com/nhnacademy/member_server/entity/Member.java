@@ -1,18 +1,38 @@
 package com.nhnacademy.member_server.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
-
-import java.sql.Timestamp;
-
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Member")
+@Table(name = "member", indexes = {
+        @Index(name = "idx_last_login_at", columnList = "last_login_at")
+})
 public class Member {
 
     @Id
@@ -35,6 +55,12 @@ public class Member {
     private String password;
 
     @Setter
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10, nullable = false)
+    @Builder.Default
+    private Gender gender = Gender.UNKNOWN;
+
+    @Setter
     @NotNull
     @Column(nullable = false, length = 20)
     private String phone;
@@ -45,13 +71,14 @@ public class Member {
     private String email;
 
     @Setter
-    @Column(name = "birth_date")
-    private Timestamp birthDate;
+    @NotNull
+    @Column(name = "birth_date", nullable = false)
+    private LocalDate birthDate;
 
     @Setter
     @NotNull
-    @Column(name = "last_login_at")
-    private Timestamp lastLoginAt;
+    @Column(name = "last_login_at", nullable = false)
+    private LocalDateTime lastLoginAt;
 
     @Setter
     @NotNull
@@ -67,16 +94,27 @@ public class Member {
     private String provider;
 
     @Setter
-    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String role;
+    private Role role;
 
     @Setter
     @NotNull
     @Column(name = "current_point", nullable = false)
     private long currentPoint;
 
+
+    @Builder.Default
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Address> addresses = new ArrayList<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "grade_id", nullable = false)
     private Grade grade;
+
+    public void addAddress(Address address) {
+        this.addresses.add(address);
+        address.setMember(this);
+    }
+
 }
