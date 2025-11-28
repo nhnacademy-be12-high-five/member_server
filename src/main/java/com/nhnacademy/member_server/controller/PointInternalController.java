@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.docs.PointInternalSwagger;
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.dto.response.PointTransactionResponse;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/internal/points")
-public class PointInternalController implements PointInternalSwagger{
+public class PointInternalController implements PointInternalSwagger {
 
     private final PointService pointService;
 

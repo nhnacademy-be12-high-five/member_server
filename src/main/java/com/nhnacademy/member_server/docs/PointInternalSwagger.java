@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.controller;
+package com.nhnacademy.member_server.docs;
 
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
