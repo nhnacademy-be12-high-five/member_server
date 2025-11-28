@@ -6,8 +6,11 @@ import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ENOUGH;
 import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ORDER_ID;
 import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_POLICY;
 
+import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
+import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
 import com.nhnacademy.member_server.entity.Member;
@@ -15,11 +18,13 @@ import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
 import com.nhnacademy.member_server.entity.PointPolicy;
 import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.repository.PointHistoryRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.PointService;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -175,6 +180,67 @@ public class PointServiceImpl implements PointService {
         ));
     }
 
+    // 관리자용 메서드
+    @Override
+    @Transactional(readOnly = true)
+    public PointAdminPolicyResponse getRecentPolicy(){
+        PointPolicy policy = pointPolicyRepository.findTopByOrderByUpdatedAtDesc();
+
+        if(policy == null){
+            throw new BusinessException(ErrorCode.POINT_NOT_POLICY);
+        }
+
+        return PointAdminPolicyResponse.builder()
+                .signupPoint(policy.getSignupPoint())
+                .reviewPoint(policy.getReviewPoint())
+                .photoPoint(policy.getPhotoPoint())
+                .build();
+    }
+
+    @Override // 새 정책 insert
+    public void updatePolicy(PointAdminPolicyRequest requestDto){
+        pointPolicyRepository.save(new PointPolicy(
+                null,
+                LocalDateTime.now(),
+                requestDto.getSignupPoint(),
+                requestDto.getReviewPoint(),
+                requestDto.getPhotoPoint()
+        ));
+    }
+
+    @Override
+    public Long adjustmentMemberPoint(PointAdminAdjustmentRequest request) {
+        Member member = memberRepository.findByIdForUpdate(request.getMemberId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        long amount = request.getAmount();
+        PointEventType eventType;
+
+        if (amount > 0) {
+            eventType = PointEventType.EARN_ADMIN;
+        } else {
+            // 사용자 포인트 음수 안되게 막기
+            if (member.getCurrentPoint() < Math.abs(amount)) {
+                throw new BusinessException(ErrorCode.POINT_NOT_ENOUGH);
+            }
+            eventType = PointEventType.USE_ADMIN;
+        }
+
+        long newBalance = member.getCurrentPoint() + amount;
+        member.setCurrentPoint(newBalance);
+
+        String description = String.format("%s (사유: %s)", eventType.getDescription(), request.getReason());
+
+        pointHistoryRepository.save(new PointHistory(
+                null,
+                member,
+                amount,
+                description,
+                eventType,
+                newBalance
+        ));
+
+        return newBalance;
+    }
 
     // 검증 메서드
     private void validateOrderRequest(PointEarnRequest requestDto) {

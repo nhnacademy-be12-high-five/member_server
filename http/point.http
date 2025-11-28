@@ -100,3 +100,55 @@ X-USER-ID: 1
 ### 3.3. 없는 유저 조회 테스트 (예외 발생)
 GET http://localhost:9002/api/points/balance
 X-USER-ID: 99999
+
+
+
+
+
+### 4. 현재 포인트 정책 조회
+GET http://localhost:9002/api/admin/points/policy
+
+### 4.1. 포인트 정책 변경 (update)
+POST http://localhost:9002/api/admin/points/policy
+Content-Type: application/json
+
+{
+  "signupPoint": 10000,
+  "reviewPoint": 5000,
+  "photoPoint": 1000
+}
+
+
+
+
+### 5. 관리자 수동 포인트 지급
+POST http://localhost:9002/api/admin/points/adjustment
+Content-Type: application/json
+
+{
+  "memberId": 1,
+  "amount": 3000,
+  "reason": "배송 지연 보상금"
+}
+
+### 16. 관리자 수동 포인트 차감
+POST http://localhost:9002/api/admin/points/adjustment
+Content-Type: application/json
+X-USER-ID: 999
+
+{
+  "memberId": 1,
+  "amount": -500,
+  "reason": "시스템 오류로 지급된 포인트 회수"
+}
+
+### 17. 관리자 수동 차감 실패 (잔액 부족)
+POST http://localhost:9002/api/admin/points/adjustment
+Content-Type: application/json
+X-USER-ID: 999
+
+{
+  "memberId": 1,
+  "amount": -999999999,
+  "reason": "악성 유저 포인트 차감"
+}
