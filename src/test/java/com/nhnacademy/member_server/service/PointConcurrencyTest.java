@@ -68,6 +68,7 @@ class PointConcurrencyTest {
         }
 
         latch.await(); // 0이 되기 전까지 block
+        executor.shutdown();
 
         Member member = memberRepository.findById(memberId).orElseThrow();
         assertThat(member.getCurrentPoint()).isEqualTo(0L);
