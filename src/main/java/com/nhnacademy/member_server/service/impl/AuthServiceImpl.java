@@ -78,7 +78,7 @@ public class AuthServiceImpl implements AuthService {
         Grade basicGrade = gradeRepository.findByGradeName("GENERAL")
                 .orElseThrow(() -> new RuntimeException("기본 등급이 DB에 없습니다."));
 
-        Role finalRole = (request.getRole() != null) ? request.getRole() : Role.USER;
+        Role finalRole = Role.USER;
 
         Member member = Member.builder()
                 .loginId(request.getLoginId())
