@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.docs.PointAdminSwagger;
 import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
 import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
 import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
@@ -16,16 +17,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin/points")
 @RequiredArgsConstructor
-public class PointAdminController{
+public class PointAdminController implements PointAdminSwagger {
 
     private final PointService pointService;
 
+    @Override
     @GetMapping("/policy")
     public ResponseEntity<PointAdminPolicyResponse> getPolicy() {
 
         return ResponseEntity.ok(pointService.getRecentPolicy());
     }
 
+    @Override
     @PostMapping("/policy")
     public ResponseEntity<Void> updatePolicy(@RequestBody PointAdminPolicyRequest request) {
         pointService.updatePolicy(request);
@@ -33,6 +36,7 @@ public class PointAdminController{
         return ResponseEntity.ok().build();
     }
 
+    @Override
     @PostMapping("/adjustment")
     public ResponseEntity<PointTransactionResponse> adjustmentMemberPoint(@RequestBody PointAdminAdjustmentRequest request) {
         Long currentPoint = pointService.adjustmentMemberPoint(request);

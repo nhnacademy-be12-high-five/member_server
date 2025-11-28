@@ -42,7 +42,7 @@ public class PointServiceImpl implements PointService {
     @Override
     public Long earnPoint(PointEarnRequest requestDto){
         Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-        long pointToEarn = 0;
+        long pointToEarn;
         String description = requestDto.getEventType().getDescription();
         Long orderIdToSave = null;
 
@@ -213,6 +213,10 @@ public class PointServiceImpl implements PointService {
         Member member = memberRepository.findByIdForUpdate(request.getMemberId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         long amount = request.getAmount();
+        if (amount == 0) {
+            throw new BusinessException(INVALID_INPUT_VALUE);
+        }
+
         PointEventType eventType;
 
         if (amount > 0) {

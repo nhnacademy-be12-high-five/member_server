@@ -12,7 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Point Admin API", description = "관리자용 포인트 정책 및 수동 조정 API")
-public interface PointPolicyAdminSwagger {
+public interface PointAdminSwagger {
 
     @Operation(summary = "포인트 정책 조회", description = "현재 적용 중인 최신 포인트 정책을 조회합니다.")
     @ApiResponses(value = {
@@ -36,5 +36,5 @@ public interface PointPolicyAdminSwagger {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 회원"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    ResponseEntity<PointTransactionResponse> manualAdjustment(@RequestBody PointAdminAdjustmentRequest request);
+    ResponseEntity<PointTransactionResponse> adjustmentMemberPoint(@RequestBody PointAdminAdjustmentRequest request);
 }
