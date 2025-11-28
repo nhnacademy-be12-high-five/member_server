@@ -1,10 +1,12 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.service.AuthService;
 import com.nhnacademy.member_server.service.MemberService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -14,7 +16,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/members")
+@RequestMapping("/api/members")
 @RequiredArgsConstructor
 public class MemberController {
 
@@ -28,26 +30,12 @@ public class MemberController {
         return ResponseEntity.ok(response);
     }
 
-    //테스트용
-    @GetMapping("/my-page")
-    public ResponseEntity<String> getMyPage(
-            @AuthenticationPrincipal MemberPrincipal principal
-    ) {
+    @PatchMapping
+    public ResponseEntity<MemberResponse> updateMember(@AuthenticationPrincipal MemberPrincipal principal,
+                                                       @Valid @RequestBody MemberUpdateRequest memberUpdateRequest) {
         Long memberId = principal.getMemberId();
-        String role = principal.getRole();
-        String loginId = principal.getLoginId();
-        return ResponseEntity.ok("마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
-    }
-
-    //어드민 테스트용
-    @GetMapping("/admin/my-page")
-    public ResponseEntity<String> getAdminMyPage(
-            @AuthenticationPrincipal MemberPrincipal principal
-    ) {
-        Long memberId = principal.getMemberId();
-        String role = principal.getRole();
-        String loginId = principal.getLoginId();
-        return ResponseEntity.ok("admin 마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
+        MemberResponse memberResponse = memberService.updateMember(memberId, memberUpdateRequest);
+        return ResponseEntity.ok(memberResponse);
     }
 
 
@@ -67,5 +55,28 @@ public class MemberController {
 
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
                 .build();
+    }
+
+    //테스트용
+    @GetMapping("/my-page")
+    public ResponseEntity<String> getMyPage(
+            @RequestHeader("X-User-ID") Long getMemberId,
+            @AuthenticationPrincipal MemberPrincipal principal
+    ) {
+        Long memberId = principal.getMemberId();
+        String role = principal.getRole();
+        String loginId = principal.getLoginId();
+        return ResponseEntity.ok(memberId +"마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
+    }
+
+    //어드민 테스트용
+    @GetMapping("/admin/my-page")
+    public ResponseEntity<String> getAdminMyPage(
+            @AuthenticationPrincipal MemberPrincipal principal
+    ) {
+        Long memberId = principal.getMemberId();
+        String role = principal.getRole();
+        String loginId = principal.getLoginId();
+        return ResponseEntity.ok("admin 마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
     }
 }

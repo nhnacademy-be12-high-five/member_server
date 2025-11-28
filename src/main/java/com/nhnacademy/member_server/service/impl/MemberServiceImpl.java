@@ -1,6 +1,8 @@
 package com.nhnacademy.member_server.service.impl;
 
+import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
+import com.nhnacademy.member_server.entity.Gender;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.Status;
 import com.nhnacademy.member_server.repository.MemberRepository;
@@ -26,10 +28,23 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public MemberResponse getMember(Long memberId) {
         Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
         MemberResponse memberResponse = MemberResponse.from(member);
-
         return memberResponse;
+    }
+
+    @Override
+    @Transactional
+    public MemberResponse updateMember(Long memberId, MemberUpdateRequest memberUpdateRequest) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
+
+        if(memberUpdateRequest.getEmail() != null) member.setEmail(memberUpdateRequest.getEmail());
+        if(memberUpdateRequest.getPhone() != null) member.setPhone(memberUpdateRequest.getPhone());
+        if(memberUpdateRequest.getGender() != null) member.setGender(memberUpdateRequest.getGender());
+
+
+        return MemberResponse.from(member);
     }
 }
