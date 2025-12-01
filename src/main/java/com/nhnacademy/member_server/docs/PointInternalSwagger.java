@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.controller;
+package com.nhnacademy.member_server.docs;
 
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
@@ -8,10 +8,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@Tag(name = "Point Internal API", description = "내부 시스템용 포인트 처리 API 결제/주문 서버용")
+@Tag(name = "Point Internal API", description = "다른 서버에서 호출할 포인트 처리 API")
 public interface PointInternalSwagger {
 
     @Operation(summary = "포인트 적립", description = "주문 완료 / 리뷰 작성 / 회원가입 시 포인트를 적립합니다.")
@@ -20,7 +19,6 @@ public interface PointInternalSwagger {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 회원"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    @PostMapping("/earn")
     ResponseEntity<PointTransactionResponse> earnPoint(@RequestBody PointEarnRequest requestDto);
 
     @Operation(summary = "포인트 사용 (차감)", description = "최종 결제 전 포인트를 차감합니다.")
@@ -30,7 +28,6 @@ public interface PointInternalSwagger {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 회원"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    @PostMapping("/use")
     ResponseEntity<PointTransactionResponse> usePoint(@RequestBody PointTransactionRequest requestDto);
 
 
@@ -40,6 +37,5 @@ public interface PointInternalSwagger {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 회원"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    @PostMapping("/revert")
     ResponseEntity<PointTransactionResponse> revertPoint(@RequestBody PointTransactionRequest requestDto);
 }

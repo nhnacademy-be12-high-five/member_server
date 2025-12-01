@@ -3,6 +3,8 @@ package com.nhnacademy.member_server.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -45,16 +47,19 @@ public class PointHistory {
     @Column(nullable = false, length = 200)
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PointEventType pointEventType;
+
     @Column(nullable = false)
     private Long pointBalance;
 
-    public PointHistory(Long orderId, Member member, Long amount, String description, Long pointBalance) {
+    public PointHistory(Long orderId, Member member, Long amount, String description, PointEventType pointEventType, Long pointBalance) {
         this.orderId = orderId;
         this.member = member;
         this.amount = amount;
         this.description = description;
+        this.pointEventType = pointEventType;
         this.pointBalance = pointBalance;
-
-        this.createdAt = LocalDateTime.now(); // 원래 자동생성인데 Hibernate가 널체크 해서 임시용
     }
 }

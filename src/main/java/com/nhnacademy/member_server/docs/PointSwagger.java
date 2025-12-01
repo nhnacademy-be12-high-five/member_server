@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.controller;
+package com.nhnacademy.member_server.docs;
 
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -22,7 +21,6 @@ public interface PointSwagger {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 회원"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    @GetMapping("/balance")
     ResponseEntity<PointBalanceResponse> getMyBalance(
             @Parameter(description = "회원 식별 ID")
             @RequestHeader("X-USER-ID") Long memberId
@@ -35,7 +33,6 @@ public interface PointSwagger {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 회원 "),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    @GetMapping("/history")
     ResponseEntity<Page<PointHistoryResponse>> getMyHistory(
             @Parameter(description = "회원 식별 ID")
             @RequestHeader("X-USER-ID") Long memberId,

@@ -45,7 +45,7 @@ class PointServiceImplTest {
         Member member = new Member();
         member.setCurrentPoint(currentPoint);
 
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(member));
 
         PointTransactionRequest request = new PointTransactionRequest(memberId, useAmount, 1L);
 
@@ -67,7 +67,7 @@ class PointServiceImplTest {
         Member member = new Member();
         member.setCurrentPoint(1000L);
 
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(member));
 
         PointTransactionRequest request = new PointTransactionRequest(memberId, 5000L, 1L);
 
@@ -86,7 +86,7 @@ class PointServiceImplTest {
         Member member = new Member();
         member.setCurrentPoint(5000L);
 
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(member));
 
         PointTransactionRequest request = new PointTransactionRequest(memberId, 1000L, 1L);
 

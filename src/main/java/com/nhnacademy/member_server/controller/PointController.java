@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.docs.PointSwagger;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
 import com.nhnacademy.member_server.service.PointService;
@@ -18,10 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/points")
-public class PointController implements PointSwagger{
+public class PointController implements PointSwagger {
 
     private final PointService pointService;
 
+    @Override
     @GetMapping("/balance")
     public ResponseEntity<PointBalanceResponse> getMyBalance(@RequestHeader("X-USER-ID") Long memberId){
 
@@ -30,6 +32,7 @@ public class PointController implements PointSwagger{
         return ResponseEntity.ok(responseDto);
     }
 
+    @Override
     @GetMapping("/history")
     public ResponseEntity<Page<PointHistoryResponse>> getMyHistory(@RequestHeader("X-USER-ID") Long memberId,
                                                              @RequestParam(defaultValue = "0") int page,

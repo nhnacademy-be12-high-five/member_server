@@ -9,9 +9,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -20,14 +20,12 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "point_policy")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
+@AllArgsConstructor
 public class PointPolicy {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @LastModifiedBy // 엔티티 데이터 수정한 사용자 정보 자동 저장
-    private Long updatedBy;
 
     @LastModifiedDate // 엔티티 데이터 수정시 현재 일시 자동 저장
     @Column(nullable = false)
