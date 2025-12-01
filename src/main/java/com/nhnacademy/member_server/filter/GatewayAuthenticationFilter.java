@@ -7,12 +7,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collections;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+@Slf4j
 @Component
 public class GatewayAuthenticationFilter extends OncePerRequestFilter {
     @Override
@@ -28,14 +31,17 @@ public class GatewayAuthenticationFilter extends OncePerRequestFilter {
                 roleName = "ROLE_" + roleName;
             }
             SimpleGrantedAuthority authority = new SimpleGrantedAuthority(roleName);
+            try {
+                Long memberId = Long.parseLong(memberIdStr);
+                MemberPrincipal principal = new MemberPrincipal(memberId, loginId, roleName);
 
-            Long memberId = Long.parseLong(memberIdStr);
-            MemberPrincipal principal = new MemberPrincipal(memberId, loginId, roleName);
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(principal, null, Collections.singleton(authority));
 
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(principal, null, Collections.singleton(authority));
-
-            SecurityContextHolder.getContext().setAuthentication(auth);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            } catch (NumberFormatException e) {
+                log.error("잘못된 X-User-ID 헤더 형식입니다: {}", memberIdStr);
+            }
         }
 
         filterChain.doFilter(request, response);

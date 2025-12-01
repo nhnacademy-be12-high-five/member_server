@@ -11,8 +11,6 @@ import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.AuthService;
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +21,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -47,10 +49,10 @@ public class AuthServiceImpl implements AuthService {
         );
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Member inputMember =  userDetails.getMember();
+        Member dbMember = memberRepository.findById(inputMember.getId()).orElseThrow(() -> new RuntimeException("존재하지 않는 회원"));
 
-        Member member = userDetails.getMember();
-
-        member.setLastLoginAt(LocalDateTime.now());
+        dbMember.setLastLoginAt(LocalDateTime.now());
 
         Long memberId = userDetails.getMember().getId();
         Role role = userDetails.getMember().getRole();
@@ -74,11 +76,22 @@ public class AuthServiceImpl implements AuthService {
         if (memberRepository.existsByLoginId(request.getLoginId())) {
             throw new RuntimeException("이미 존재하는 아이디입니다.");
         }
+        else if (memberRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("이미 존재하는 이메일입니다.");
+        } else if (memberRepository.existsByPhone(request.getPhone())) {
+            throw new RuntimeException("이미 존재하는 번호입니다.");
+        }
 
         Grade basicGrade = gradeRepository.findByGradeName("GENERAL")
-                .orElseThrow(() -> new RuntimeException("기본 등급이 DB에 없습니다."));
+                .orElseGet(() -> gradeRepository.save(Grade.builder()
+                        .gradeName("GENERAL")
+                        .min(0)
+                        .pointRate(new BigDecimal("0.01"))
+                        .max(null)
+                        .build()
+                ));
 
-        Role finalRole = (request.getRole() != null) ? request.getRole() : Role.USER;
+        Role finalRole = Role.USER;
 
         Member member = Member.builder()
                 .loginId(request.getLoginId())
