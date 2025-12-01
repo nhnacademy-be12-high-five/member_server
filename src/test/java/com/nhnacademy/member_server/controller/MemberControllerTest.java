@@ -1,95 +1,144 @@
 package com.nhnacademy.member_server.controller;
 
-import static org.mockito.Mockito.verify;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
+import com.nhnacademy.member_server.dto.response.MemberResponse;
+import com.nhnacademy.member_server.entity.Gender;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
-import com.nhnacademy.member_server.service.impl.AuthServiceImpl;
-import com.nhnacademy.member_server.service.impl.MemberServiceImpl;
-import java.util.Collections;
+import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.MemberService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
-@ActiveProfiles("local")
+import java.time.LocalDate;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@ExtendWith(MockitoExtension.class)
 class MemberControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
-    private MemberServiceImpl memberServiceImpl;
+    @Mock
+    private MemberService memberService;
 
-    @MockitoBean
-    private AuthServiceImpl authServiceImpl;
+    @Mock
+    private AuthService authService;
 
-    @Test
-    @DisplayName("마이페이지 조회 (Gateway 헤더 필수)")
-    void getMyPage_success() throws Exception {
-        Long memberId = 123L;
+    @InjectMocks
+    private MemberController memberController;
 
-        mockMvc.perform(get("/members/my-page")
-                        .header("X-User-ID", memberId))
-                .andExpect(status().isOk());
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    private HandlerMethodArgumentResolver putPrincipal() {
+        return new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.getParameterType().isAssignableFrom(MemberPrincipal.class);
+            }
+
+            @Override
+            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+                return new MemberPrincipal(1L, "testUser", "USER");
+            }
+        };
+    }
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(memberController)
+                .setCustomArgumentResolvers(putPrincipal())
+                .build();
     }
 
     @Test
-    @DisplayName("회원 탈퇴 성공 - 가장 직관적인 방법")
+    @DisplayName("내 정보 조회 성공 (GET /api/members)")
+    void getMember_success() throws Exception {
+        Long memberId = 1L;
+        MemberResponse response = MemberResponse.builder()
+                .name("홍길동")
+                .email("test@nhn.com")
+                .phone("010-1234-5678")
+                .birthDate(LocalDate.of(1999, 1, 1))
+                .status("ACTIVE")
+                .gradeName("GOLD")
+                .build();
+
+        given(memberService.getMember(memberId)).willReturn(response);
+
+        mockMvc.perform(get("/api/members"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("홍길동"))
+                .andExpect(jsonPath("$.gradeName").value("GOLD"));
+
+        verify(memberService).getMember(memberId);
+    }
+
+    @Test
+    @DisplayName("내 정보 수정 성공 (PATCH /api/members)")
+    void updateMember_success() throws Exception {
+        Long memberId = 1L;
+        MemberUpdateRequest request = MemberUpdateRequest.builder()
+                .email("update@nhn.com")
+                .phone("010-9999-9999")
+                .gender(Gender.MALE)
+                .build();
+
+        MemberResponse updatedResponse = MemberResponse.builder()
+                .name("홍길동")
+                .email("update@nhn.com")
+                .phone("010-9999-9999")
+                .build();
+
+        given(memberService.updateMember(eq(memberId), any(MemberUpdateRequest.class)))
+                .willReturn(updatedResponse);
+
+        mockMvc.perform(patch("/api/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("update@nhn.com"));
+
+        verify(memberService).updateMember(eq(memberId), any(MemberUpdateRequest.class));
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 성공 (DELETE /api/members/withdraw)")
     void withdraw_success() throws Exception {
-        // ------------------------------------------------------------
-        // 1. 준비 (Given): 가짜 인증 객체를 직접 만듭니다.
-        // ------------------------------------------------------------
-        Long memberId = 123L;
-        String loginId = "testUser";
-        String role = "USER";
+        Long memberId = 1L;
         String testToken = "test-access-token";
 
-        // (1) 내가 만든 커스텀 Principal 생성
-        MemberPrincipal myPrincipal = new MemberPrincipal(memberId, loginId, role);
-
-        // (2) 스프링 시큐리티가 알아보는 '인증 토큰' 생성
-        Authentication auth = new UsernamePasswordAuthenticationToken(
-                myPrincipal, // ★ 여기에 우리 객체를 넣는 게 핵심!
-                null,        // 비밀번호 (필요 없음)
-                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + role)) // 권한
-        );
-
-        // ------------------------------------------------------------
-        // 2. 실행 (When): .with(authentication(auth))로 주입합니다.
-        // ------------------------------------------------------------
-        mockMvc.perform(delete("/members/withdraw")
-                        .header("X-User-ID", memberId) // (선택) 로직상 필요하면 유지
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + testToken) // 컨트롤러가 토큰 달라고 하니까 줌
-                        .with(authentication(auth)) // ★ "이 사람 로그인한 걸로 쳐!" 하고 강제 주입
-                        .with(csrf()))              // CSRF 토큰 (POST/DELETE 필수)
+        mockMvc.perform(delete("/api/members/withdraw")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + testToken))
                 .andDo(print())
-                // ------------------------------------------------------------
-                // 3. 검증 (Then)
-                // ------------------------------------------------------------
                 .andExpect(status().isOk())
                 .andExpect(cookie().maxAge("refresh-token", 0));
 
-        // 서비스가 잘 호출됐는지 확인
-        verify(memberServiceImpl).withdraw(memberId);
-        verify(authServiceImpl).logout(testToken, memberId);
+        verify(memberService).withdraw(memberId);
+        verify(authService).logout(testToken, memberId);
     }
+
+
 }
