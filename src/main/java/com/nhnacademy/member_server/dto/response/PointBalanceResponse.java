@@ -13,4 +13,6 @@ public class PointBalanceResponse {
     private Long memberId;
     @Schema(description = "포인트 잔액", example = "2000")
     private Long currentPoint;
+    @Schema(description = "누적 적립 포인트", example = "150000")
+    private Long totalEarnedPoint;
 }
