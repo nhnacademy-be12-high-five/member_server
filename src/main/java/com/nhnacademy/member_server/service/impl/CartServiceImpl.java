@@ -5,17 +5,21 @@ import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartDetailResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
+import com.nhnacademy.member_server.entity.cartEntity.Cart;
 import com.nhnacademy.member_server.entity.cartEntity.CartItem;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.feign.BookFeignClient;
 import com.nhnacademy.member_server.repository.CartItemRepository;
+import com.nhnacademy.member_server.repository.CartRepository;
+import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.CartService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
@@ -30,6 +34,8 @@ public class CartServiceImpl implements CartService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final BookFeignClient bookFeignClient;
     private final CartItemRepository cartItemRepository;
+    private final CartRepository cartRepository;
+    private final MemberRepository memberRepository;
 
     private static final String DIRTY_KEY = "cart:dirty"; // DB 동기화 대상 목록
 
@@ -158,9 +164,32 @@ public class CartServiceImpl implements CartService {
         }
     }
 
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW) // REQUIRES_NEW -> 각 회원을 독립적으로 지키기 위해서
+    public void syncToDb(Long memberId, Map<Object, Object> redisItems) {
+        // 회원 장바구니에 저장하기 위해 없으면 만들어줌
+        Cart cart = cartRepository.findByMember_Id(memberId)
+                .orElseGet(() -> cartRepository.save(new Cart(memberRepository.getReferenceById(memberId))));
+
+        // DELETE
+        cartItemRepository.deleteAllByCartId(cart.getId());
+
+        // Redis 데이터 DB로 변환
+        List<CartItem> items = redisItems.entrySet().stream()
+                .map(entry -> new CartItem(
+                        Long.parseLong((String) entry.getKey()),
+                        Integer.parseInt((String) entry.getValue()),
+                        cart))
+                .toList();
+
+        // INSERT
+        cartItemRepository.saveAll(items);
+    }
+
     ///  헬퍼 메서드
 
-    private CartListResponse calculateCartResponse(Map<Object, Object> redisItems) {
+    // feignClient로 책 정보 조회 및 DTO 변환 메서드
+     private CartListResponse calculateCartResponse(Map<Object, Object> redisItems) {
         // 책 ID 리스트 추출
         List<Long> bookIds = redisItems.keySet().stream()
                 .map(k -> Long.valueOf((String) k))
@@ -193,6 +222,7 @@ public class CartServiceImpl implements CartService {
         return new CartListResponse(responseList, totalCartPrice);
     }
 
+    // --- redis 복구 메소드 ---
     private Map<Object, Object> loadFromDbAndRestoreToRedis(Long memberId, String key) {
         // 1. DB에서 회원의 장바구니 아이템 조회 (Fetch Join 등으로 성능 최적화 추천)
         // CartRepository -> CartItemRepository를 통해 조회

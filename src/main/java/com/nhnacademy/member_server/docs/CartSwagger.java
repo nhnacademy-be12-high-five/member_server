@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.controller;
+package com.nhnacademy.member_server.docs;
 
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
