@@ -1,7 +1,8 @@
 package com.nhnacademy.member_server.feign;
 
-import com.nhnacademy.member_server.dto.CartDetailResponse;
 import java.util.List;
+
+import com.nhnacademy.member_server.dto.cartResponse.CartDetailResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
