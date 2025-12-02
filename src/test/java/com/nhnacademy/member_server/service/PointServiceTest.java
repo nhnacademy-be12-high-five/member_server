@@ -50,7 +50,7 @@ class PointServiceTest {
     void usePoints_Success() {
         // given
         Long memberId = 1L;
-        Long currentPoint = 10000L;
+        long currentPoint = 10000L;
         Long useAmount = 5000L;
 
         Member member = new Member();
@@ -149,7 +149,7 @@ class PointServiceTest {
 
         when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(member));
 
-        PointPolicy policy = new PointPolicy(memberId, LocalDateTime.now(), 5000, 200, 500);
+        PointPolicy policy = new PointPolicy(null, LocalDateTime.now(), 5000, 200, 500);
 
         when(pointPolicyRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(policy);
 
