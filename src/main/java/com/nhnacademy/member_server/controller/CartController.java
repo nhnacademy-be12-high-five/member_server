@@ -1,75 +1,102 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.dto.CartAddRequest;
-import com.nhnacademy.member_server.dto.CartListResponse;
+import com.nhnacademy.member_server.docs.CartSwagger;
+import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
+import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
+import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
+import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
+import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.service.CartService;
 import com.nhnacademy.member_server.utils.CookieUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/cart")
+@RequestMapping("/cart")
 @RequiredArgsConstructor
 public class CartController implements CartSwagger {
 
     private final CartService cartService;
 
     @PostMapping("/items")
-    public ResponseEntity<Void> add(@RequestBody CartAddRequest request,
-                                           HttpServletRequest httpRequest,
-                                           HttpServletResponse httpResponse){
-        Long memberId = getMemberId();
+    public ResponseEntity<CartAddResponse> addItemToCart(@RequestBody CartAddRequest request,
+                                                         @CookieValue(value = "guestCookie", required = false) String guestId,
+                                                         @AuthenticationPrincipal MemberPrincipal principal,
+                                                         HttpServletResponse httpResponse) {
 
-        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
+        Long memberId = (principal != null) ? principal.getMemberId() : null;
 
-        // 비회원이고 카트가 만들어진적이 없다면 새로운 cartId를 리턴해줌
-        String newGuestId = cartService.addBookToCart(request, memberId, guestId);
-
-        // 여기서 cartId를 쿠키에 저장해주는 것
-        if(newGuestId != null){
-            CookieUtils.addCookie(httpResponse, "guestCookie", newGuestId, 60*60*24*30);
+        if (memberId == null && guestId == null) {
+            guestId = UUID.randomUUID().toString();
+            CookieUtils.addCookie(httpResponse, "guestCookie", guestId, 60 * 60 * 24 * 7);
         }
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+
+        CartAddResponse response = cartService.addToCart(request, memberId, guestId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    // 장바구니가 없으면 그냥 빈 리스트 반환
     @GetMapping
-    public ResponseEntity<CartListResponse> getCartItems(HttpServletRequest httpRequest){
-        Long memberId = getMemberId();
-        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
+    public ResponseEntity<CartListResponse> getCartItems(@CookieValue(value = "guestCookie", required = false) String guestId,
+                                                         @AuthenticationPrincipal MemberPrincipal principal,
+                                                         Pageable pageable){
+        Long memberId = principal.getMemberId();
 
         CartListResponse cartList = cartService.getCartItemList(memberId, guestId);
-       return ResponseEntity.status(200).body(cartList);
+
+       return ResponseEntity.ok(cartList);
     }
 
-    @PostMapping
-    public ResponseEntity<Void> removeCartItem(HttpServletRequest httpRequest,
+    // 장바구니 비우기
+    @DeleteMapping("/items")
+    public ResponseEntity<Void> deleteAllCartItem(HttpServletRequest httpRequest,
+                                                  @AuthenticationPrincipal MemberPrincipal principal,
                                                HttpServletResponse httpResponse){
-        Long memberId = getMemberId();
+        Long memberId = principal.getMemberId();
         String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
 
-        cartService.deleteCartItem(memberId, guestId);
+        cartService.deleteAllCartItem(memberId, guestId);
         return ResponseEntity.noContent().build();
     }
 
-    // 멤버 아이디를 가져오는 함수입니다. 인증을 거쳐서 들어오는거라 없으면 null 값을 반환합니다.
-    private Long getMemberId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
-            String userId = ((UserDetails) auth.getPrincipal()).getUsername();
-            return Long.parseLong(userId);
-        }
-        return null;
+    // 수량 변경, 책의 아이디와 바뀔 수량은 request에 담겨서 넘어옴
+    @PutMapping("/items")
+    public ResponseEntity<Void> updateQuantity(@RequestBody @Valid CartItemUpdateRequest request,
+                                               @AuthenticationPrincipal MemberPrincipal principal,
+                                               HttpServletRequest httpRequest) {
+        Long memberId = principal.getMemberId();
+        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
+
+        cartService.updateCartItemQuantity(memberId, guestId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    // 책 단건 삭제
+    @DeleteMapping("/items/{bookId}")
+    public ResponseEntity<Void> deleteOneItem(@PathVariable Long bookId,
+                                              @AuthenticationPrincipal MemberPrincipal principal,
+                                              HttpServletRequest httpRequest) {
+        Long memberId = principal.getMemberId();
+        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
+
+        cartService.deleteCartItem(memberId, guestId, bookId);
+        return ResponseEntity.noContent().build();
     }
 }
