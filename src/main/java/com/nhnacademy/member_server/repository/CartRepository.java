@@ -1,7 +1,8 @@
 package com.nhnacademy.member_server.repository;
 
-import com.nhnacademy.member_server.entity.Cart;
 import java.util.Optional;
+
+import com.nhnacademy.member_server.entity.cartEntity.Cart;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

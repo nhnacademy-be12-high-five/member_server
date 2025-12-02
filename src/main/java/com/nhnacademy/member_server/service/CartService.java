@@ -2,12 +2,15 @@ package com.nhnacademy.member_server.service;
 
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
+import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
 
 public interface CartService {
     CartListResponse getCartItemList(Long memberId, String guestId);
 
-    void addToCart(CartAddRequest request, Long memberId, String guestId);
+    CartAddResponse addToCart(CartAddRequest request, Long memberId, String guestId);
+
+    void restoreCartOnLogin(Long memberId);
 
     void deleteAllCartItem(Long memberId, String guestId);
 

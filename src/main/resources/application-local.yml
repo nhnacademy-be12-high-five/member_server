@@ -1,17 +1,30 @@
 server:
-  port: 9002 # 로컬에서 띄울 포트
+  port: 9002
 
 spring:
+  application:
+    # [매우 중요] Gateway가 찾는 이름(lb://member-server)과 토씨 하나 틀리면 안됨
+    name: member-server
+
   datasource:
-    url: jdbc:mysql://localhost:3306/taehunDB # 내 로컬 DB
+    url: jdbc:mysql://localhost:3306/taehunDB
     username: root
     password:
-
-  # JPA/Hibernate 로그 설정 등 개발 편의 설정 추가
   jpa:
     show-sql: true
     hibernate:
       ddl-auto: create
+
+jwt:
+  secret: dGhpc2lzbXl0ZWFtNWp3dHNlY3JldGtleWZvcm1lbWJlcnNlcnZlcm1ha2VybWFraWVsdG9uZ2Vub3Vo=
+  expiration_time: 3600000
+  refresh_expiration_time: 604800000
+
+# Eureka 등록 설정 (없으면 추가)
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
 
 springdoc:
   version: V.0.0.1
