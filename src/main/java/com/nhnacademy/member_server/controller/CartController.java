@@ -5,6 +5,7 @@ import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
+import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.service.CartService;
 import com.nhnacademy.member_server.utils.CookieUtils;
@@ -59,37 +60,64 @@ public class CartController implements CartSwagger {
 
     // 장바구니 비우기
     @DeleteMapping("/items")
-    public ResponseEntity<Void> deleteAllCartItem(HttpServletRequest httpRequest,
-                                                  @AuthenticationPrincipal MemberPrincipal principal,
-                                               HttpServletResponse httpResponse){
+    public ResponseEntity<Void> deleteAllCartItem(@CookieValue(value = "guestCookie", required = false) String guestId,
+                                                  @AuthenticationPrincipal MemberPrincipal principal){
         Long memberId = principal.getMemberId();
-        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
 
         cartService.deleteAllCartItem(memberId, guestId);
+
         return ResponseEntity.noContent().build();
     }
 
     // 수량 변경, 책의 아이디와 바뀔 수량은 request에 담겨서 넘어옴
     @PutMapping("/items")
-    public ResponseEntity<Void> updateQuantity(@RequestBody @Valid CartItemUpdateRequest request,
-                                               @AuthenticationPrincipal MemberPrincipal principal,
-                                               HttpServletRequest httpRequest) {
+    public ResponseEntity<CartUpdateResponse> updateQuantity(@RequestBody @Valid CartItemUpdateRequest request,
+                                                             @AuthenticationPrincipal MemberPrincipal principal,
+                                                             @CookieValue(value = "guestCookie", required = false) String guestId) {
         Long memberId = principal.getMemberId();
-        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
 
-        cartService.updateCartItemQuantity(memberId, guestId, request);
-        return ResponseEntity.ok().build();
+        CartUpdateResponse response = cartService.updateCartItemQuantity(memberId, guestId, request);
+        return ResponseEntity.ok(response);
     }
 
     // 책 단건 삭제
     @DeleteMapping("/items/{bookId}")
     public ResponseEntity<Void> deleteOneItem(@PathVariable Long bookId,
                                               @AuthenticationPrincipal MemberPrincipal principal,
-                                              HttpServletRequest httpRequest) {
+                                              @CookieValue(value = "guestCookie", required = false) String guestId) {
         Long memberId = principal.getMemberId();
-        String guestId = CookieUtils.getCookieValue(httpRequest, "guestCookie").orElse(null);
 
         cartService.deleteCartItem(memberId, guestId, bookId);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // 장바구니 합친다 했을때 예
+    @PostMapping("/cart/merge")
+    public ResponseEntity<Void> mergeGuestCart(@AuthenticationPrincipal MemberPrincipal memberPrincipal,
+                                               @CookieValue(value = "guestCookie", required = false) String guestId,
+                                               HttpServletResponse response){
+        Long memberId = memberPrincipal.getMemberId();
+
+        if(guestId != null){
+            cartService.migrateGuestCart(guestId, memberId);
+            CookieUtils.deleteCookie(response, guestId);
+        }
+
+        return ResponseEntity.ok().build();
+    }
+
+    // 장바구니를 합치겠습니까? 했을 때 아니오
+    @DeleteMapping("/cart/guest")
+    public ResponseEntity<Void> ignoreGuestCart(@CookieValue(value = "guestCookie", required = false) String guestId,
+                                                HttpServletResponse response) {
+        if (guestId != null) {
+            // 1. Redis 비회원 키 삭제
+            cartService.deleteGuestCartOnly(guestId);
+
+            // 2. 쿠키 삭제
+            CookieUtils.deleteCookie(response, "guestCookie");
+        }
         return ResponseEntity.noContent().build();
     }
 }

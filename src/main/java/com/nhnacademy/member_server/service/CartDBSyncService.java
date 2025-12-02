@@ -26,13 +26,12 @@ public class CartDBSyncService {
             Long memberId = Long.parseLong(memberIdStr);
             try {
                 // Redis 조회는 트랜잭션 필요 없음 (빠르게 조회)
-                String redisKey = "cart:member:" + memberId;
+                String redisKey = "cart:m:" + memberId;
                 Map<Object, Object> redisItems = redisTemplate.opsForHash().entries(redisKey);
 
-                if (!redisItems.isEmpty()) {
-                    // 한 명 동기화가 끝나면 바로 커밋됨.
-                    cartService.syncToDb(memberId, redisItems);
-                }
+                // 한 명 동기화가 끝나면 바로 커밋됨.
+                cartService.syncToDb(memberId, redisItems);
+
             } catch (Exception e) {
                 log.error("Sync failed for member: {}", memberId, e);
                 // 실패 시 다시 큐에 넣음 -> 이것이 단독으로 Transactional 걸어서 가능한 것

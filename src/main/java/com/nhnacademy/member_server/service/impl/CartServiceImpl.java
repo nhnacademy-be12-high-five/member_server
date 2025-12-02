@@ -5,6 +5,7 @@ import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartDetailResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
+import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
 import com.nhnacademy.member_server.entity.cartEntity.Cart;
 import com.nhnacademy.member_server.entity.cartEntity.CartItem;
 import com.nhnacademy.member_server.exception.BusinessException;
@@ -51,9 +52,10 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional(readOnly = true)
     public CartListResponse getCartItemList(Long memberId, String guestId) {
+        boolean hasGuestCart = false;
         // 방어 로직
         if (memberId == null && guestId == null) {
-            return new CartListResponse(Collections.emptyList(), 0L);
+            return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
         }
 
         String key = getRedisKey(memberId, guestId);
@@ -66,12 +68,18 @@ public class CartServiceImpl implements CartService {
         }
 
         if (redisItems.isEmpty()) {
-            return new CartListResponse(Collections.emptyList(), 0L);
+            return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
         }
 
         redisTemplate.expire(key, 7, TimeUnit.DAYS);
 
-        return calculateCartResponse(redisItems);
+        if (memberId != null && guestId != null) {
+            String guestKey = "cart:g:" + guestId;
+            // Redis에 키가 존재하고, 내용물이 비어있지 않은지 체크
+            hasGuestCart = redisTemplate.hasKey(guestKey);
+        }
+
+        return calculateCartResponse(redisItems, hasGuestCart);
     }
 
     // 로그인 시 비동기 복구 -> 로그인 직후 실행됨
@@ -104,7 +112,7 @@ public class CartServiceImpl implements CartService {
 
     // 수량 변경
     @Override
-    public void updateCartItemQuantity(Long memberId, String guestId, CartItemUpdateRequest request) {
+    public CartUpdateResponse updateCartItemQuantity(Long memberId, String guestId, CartItemUpdateRequest request) {
         String key = getRedisKey(memberId, guestId);
         String bookIdStr = String.valueOf(request.bookId());
 
@@ -115,9 +123,14 @@ public class CartServiceImpl implements CartService {
         // 덮어쓰기
         redisTemplate.opsForHash().put(key, bookIdStr, String.valueOf(request.quantity()));
 
+        // redis 7일 연장
+        redisTemplate.expire(key, 7, TimeUnit.DAYS);
+
         if (memberId != null) {
             redisTemplate.opsForSet().add(DIRTY_KEY, String.valueOf(memberId));
         }
+
+        return new CartUpdateResponse(key, request.bookId(), request.quantity());
     }
 
     // 책 자체를 삭제
@@ -137,31 +150,63 @@ public class CartServiceImpl implements CartService {
     public void deleteAllCartItem(Long memberId, String guestId) {
         String key = getRedisKey(memberId, guestId);
 
-        redisTemplate.delete(key); // Key 자체를 삭제
+        try {
+            Boolean isDeleted = redisTemplate.delete(key);
 
-        if (memberId != null) {
-            redisTemplate.opsForSet().add(DIRTY_KEY, String.valueOf(memberId));
+            if (isDeleted) {
+                log.info("장바구니 삭제 성공. Key: {}", key);
+
+                if (memberId != null) {
+                    Long addedCount = redisTemplate.opsForSet().add(DIRTY_KEY, String.valueOf(memberId));
+
+                    if (addedCount == null || addedCount == 0) {
+                        log.debug("이미 동기화 대기열(Dirty Set)에 존재하는 회원입니다. MemberId: {}", memberId);
+                    } else {
+                        log.info("DB 동기화 대기열 등록 완료. MemberId: {}", memberId);
+                    }
+                }
+            } else {
+                log.info("이미 비어있는 장바구니 삭제 요청됨. Key: {}", key);
+            }
+
+        } catch (Exception e) {
+            log.error("장바구니 삭제 중 Redis 오류 발생! MemberId: {}, GuestId: {}", memberId, guestId, e);
+
+            throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
         }
     }
 
     @Override
+    @Transactional
     public void migrateGuestCart(String guestId, Long memberId) {
         String guestKey = "cart:g:" + guestId;
         String memberKey = "cart:m:" + memberId;
         String dirtyKey = "cart:dirty";
 
-        if (redisTemplate.hasKey(guestKey)) {
-            Map<Object, Object> guestItems = redisTemplate.opsForHash().entries(guestKey);
-
-            // 회원 장바구니에 덮어쓰기 (putAll)
-            redisTemplate.opsForHash().putAll(memberKey, guestItems);
-
-            redisTemplate.delete(guestKey);
-
-            redisTemplate.opsForSet().add(dirtyKey, String.valueOf(memberId));
-
-            redisTemplate.expire(memberKey, 30, TimeUnit.DAYS);
+        if (!redisTemplate.hasKey(guestKey)) {
+            return;
         }
+
+        Map<Object, Object> guestItems = redisTemplate.opsForHash().entries(guestKey);
+
+        if (!redisTemplate.hasKey(memberKey)) {
+            loadFromDbAndRestoreToRedis(memberId, memberKey);
+        }
+
+        // 합치기 수량
+        for (Map.Entry<Object, Object> entry : guestItems.entrySet()) {
+            String bookId = (String) entry.getKey();
+            int quantity = Integer.parseInt((String) entry.getValue());
+
+            // 여기서 redis의 장점이 나옴 없으면 생성 있으면 증가
+            redisTemplate.opsForHash().increment(memberKey, bookId, quantity);
+        }
+
+        redisTemplate.delete(guestKey);
+
+        redisTemplate.opsForSet().add(dirtyKey, String.valueOf(memberId));
+
+        redisTemplate.expire(memberKey, 7, TimeUnit.DAYS);
     }
 
     @Override
@@ -175,21 +220,30 @@ public class CartServiceImpl implements CartService {
         cartItemRepository.deleteAllByCartId(cart.getId());
 
         // Redis 데이터 DB로 변환
-        List<CartItem> items = redisItems.entrySet().stream()
-                .map(entry -> new CartItem(
-                        Long.parseLong((String) entry.getKey()),
-                        Integer.parseInt((String) entry.getValue()),
-                        cart))
-                .toList();
-
-        // INSERT
-        cartItemRepository.saveAll(items);
+        if (redisItems != null && !redisItems.isEmpty()) {
+            List<CartItem> items = redisItems.entrySet().stream()
+                    .map(entry -> new CartItem(
+                            Long.parseLong((String) entry.getKey()),
+                            Integer.parseInt((String) entry.getValue()),
+                            cart))
+                    .toList();
+            // INSERT
+            cartItemRepository.saveAll(items);
+        }
     }
+
+    // 비회원 redis 삭제 -> 장바구니 합칠 때 사용하는 메소드
+    @Override
+    public void deleteGuestCartOnly(String guestId) {
+        String key = "cart:g:" + guestId;
+        redisTemplate.delete(key);
+    }
+
 
     ///  헬퍼 메서드
 
     // feignClient로 책 정보 조회 및 DTO 변환 메서드
-     private CartListResponse calculateCartResponse(Map<Object, Object> redisItems) {
+    private CartListResponse calculateCartResponse(Map<Object, Object> redisItems, boolean hasGuestCart) {
         // 책 ID 리스트 추출
         List<Long> bookIds = redisItems.keySet().stream()
                 .map(k -> Long.valueOf((String) k))
@@ -219,7 +273,7 @@ public class CartServiceImpl implements CartService {
                     quantity, itemTotalPrice, book.image()
             ));
         }
-        return new CartListResponse(responseList, totalCartPrice);
+        return new CartListResponse(responseList, totalCartPrice, hasGuestCart);
     }
 
     // --- redis 복구 메소드 ---
