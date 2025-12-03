@@ -4,6 +4,7 @@ import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
+import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
 import java.util.Map;
 
 public interface CartService {
@@ -11,6 +12,7 @@ public interface CartService {
 
     CartAddResponse addToCart(CartAddRequest request, Long memberId, String guestId);
 
+    // 로그인 쪽에서 가져다 쓰기 위해 구현
     void restoreCartOnLogin(Long memberId);
 
     void syncToDb(Long memberId, Map<Object, Object> redisItems);
@@ -19,7 +21,9 @@ public interface CartService {
 
     void deleteCartItem(Long memberId, String guestId, Long bookId);
 
-    void updateCartItemQuantity(Long memberId, String guestId, CartItemUpdateRequest request);
+    CartUpdateResponse updateCartItemQuantity(Long memberId, String guestId, CartItemUpdateRequest request);
 
     void migrateGuestCart(String guestId, Long memberId);
+
+    void deleteGuestCartOnly(String guestId);
 }
