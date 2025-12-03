@@ -3,7 +3,7 @@ POST localhost:9002/api/cart/items
 Content-Type: application/json
 
 {
-  "bookId": 1,
+  "bookId": 3,
   "quantity": 1
 }
 
@@ -14,13 +14,13 @@ GET localhost:9002/api/cart
 DELETE localhost:9002/api/cart/items
 
 ### 책 단건 삭제
-DELETE localhost:9002/api/cart/items/2
+DELETE localhost:9002/api/cart/items/5
 
 ### 책 수량 증가/감소
 PUT localhost:9002/api/cart/items
 Content-Type: application/json
 
 {
-  "bookId": 2,
+  "bookId": 5,
   "quantity": 4
 }
