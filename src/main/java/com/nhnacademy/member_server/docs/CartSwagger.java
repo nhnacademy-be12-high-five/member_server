@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -52,7 +51,7 @@ public interface CartSwagger {
             @ApiResponse(responseCode = "204", description = "삭제 성공 (No Content)"),
             @ApiResponse(responseCode = "404", description = "장바구니를 찾을 수 없음")
     })
-    @PostMapping
+    @DeleteMapping("/items")
     ResponseEntity<Void> deleteAllCartItem(@CookieValue(value = "guestCookie", required = false) String guestId, @AuthenticationPrincipal MemberPrincipal principal);
 
 
@@ -62,11 +61,23 @@ public interface CartSwagger {
             @ApiResponse(responseCode = "400", description = "잘못된 수량 (1 미만)"),
             @ApiResponse(responseCode = "404", description = "장바구니나 상품을 찾을 수 없음")
     })
-    @PutMapping
+    @PutMapping("/items")
     ResponseEntity<CartUpdateResponse> updateQuantity(@RequestBody @Valid CartItemUpdateRequest request, @AuthenticationPrincipal MemberPrincipal principal, @CookieValue(value = "guestCookie", required = false) String guestId);
 
 
     @Operation(summary = "장바구니 상품 단건 삭제", description = "장바구니에서 특정 책 하나를 삭제합니다.")
     @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "삭제 성공")})
-    @DeleteMapping("/items/{bookId}") ResponseEntity<Void> deleteOneItem(@PathVariable Long bookId,  @AuthenticationPrincipal MemberPrincipal principal,@CookieValue(value = "guestCookie", required = false) String guestId);
+    @DeleteMapping("/items/{bookId}")
+    ResponseEntity<Void> deleteOneItem(@PathVariable Long bookId,  @AuthenticationPrincipal MemberPrincipal principal,@CookieValue(value = "guestCookie", required = false) String guestId);
+
+
+    @PostMapping("/merge")
+    ResponseEntity<Void> mergeGuestCart(@AuthenticationPrincipal MemberPrincipal principal,
+                                               @CookieValue(value = "guestCookie", required = false) String guestId,
+                                               HttpServletResponse response);
+
+
+    @DeleteMapping("/guest")
+    ResponseEntity<Void> ignoreGuestCart(@CookieValue(value = "guestCookie", required = false) String guestId,
+                                                HttpServletResponse response);
 }

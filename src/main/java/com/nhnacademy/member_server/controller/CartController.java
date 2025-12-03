@@ -9,7 +9,6 @@ import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.service.CartService;
 import com.nhnacademy.member_server.utils.CookieUtils;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -58,7 +57,7 @@ public class CartController implements CartSwagger {
     public ResponseEntity<CartListResponse> getCartItems(@CookieValue(value = "guestCookie", required = false) String guestId,
                                                          @AuthenticationPrincipal MemberPrincipal principal,
                                                          Pageable pageable){
-        Long memberId = principal.getMemberId();
+        Long memberId = (principal != null) ? principal.getMemberId() : null;
 
         CartListResponse cartList = cartService.getCartItemList(memberId, guestId);
 
@@ -69,7 +68,7 @@ public class CartController implements CartSwagger {
     @DeleteMapping("/items")
     public ResponseEntity<Void> deleteAllCartItem(@CookieValue(value = "guestCookie", required = false) String guestId,
                                                   @AuthenticationPrincipal MemberPrincipal principal){
-        Long memberId = principal.getMemberId();
+        Long memberId = (principal != null) ? principal.getMemberId() : null;
 
         cartService.deleteAllCartItem(memberId, guestId);
 
@@ -81,7 +80,7 @@ public class CartController implements CartSwagger {
     public ResponseEntity<CartUpdateResponse> updateQuantity(@RequestBody @Valid CartItemUpdateRequest request,
                                                              @AuthenticationPrincipal MemberPrincipal principal,
                                                              @CookieValue(value = "guestCookie", required = false) String guestId) {
-        Long memberId = principal.getMemberId();
+        Long memberId = (principal != null) ? principal.getMemberId() : null;
 
         CartUpdateResponse response = cartService.updateCartItemQuantity(memberId, guestId, request);
         return ResponseEntity.ok(response);
@@ -92,7 +91,7 @@ public class CartController implements CartSwagger {
     public ResponseEntity<Void> deleteOneItem(@PathVariable Long bookId,
                                               @AuthenticationPrincipal MemberPrincipal principal,
                                               @CookieValue(value = "guestCookie", required = false) String guestId) {
-        Long memberId = principal.getMemberId();
+        Long memberId = (principal != null) ? principal.getMemberId() : null;
 
         cartService.deleteCartItem(memberId, guestId, bookId);
 
@@ -100,22 +99,22 @@ public class CartController implements CartSwagger {
     }
 
     // 장바구니 합친다 했을때 예
-    @PostMapping("/cart/merge")
-    public ResponseEntity<Void> mergeGuestCart(@AuthenticationPrincipal MemberPrincipal memberPrincipal,
+    @PostMapping("/merge")
+    public ResponseEntity<Void> mergeGuestCart(@AuthenticationPrincipal MemberPrincipal principal,
                                                @CookieValue(value = "guestCookie", required = false) String guestId,
                                                HttpServletResponse response){
-        Long memberId = memberPrincipal.getMemberId();
+        Long memberId = (principal != null) ? principal.getMemberId() : null;
 
         if(guestId != null){
             cartService.migrateGuestCart(guestId, memberId);
-            CookieUtils.deleteCookie(response, guestId);
+            CookieUtils.deleteCookie(response, "guestCookie");
         }
 
         return ResponseEntity.ok().build();
     }
 
     // 장바구니를 합치겠습니까? 했을 때 아니오
-    @DeleteMapping("/cart/guest")
+    @DeleteMapping("/guest")
     public ResponseEntity<Void> ignoreGuestCart(@CookieValue(value = "guestCookie", required = false) String guestId,
                                                 HttpServletResponse response) {
         if (guestId != null) {

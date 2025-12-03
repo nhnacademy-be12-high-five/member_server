@@ -1,10 +1,7 @@
 package com.nhnacademy.member_server.utils;
 
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.Arrays;
-import java.util.Optional;
 
 public class CookieUtils {
 
