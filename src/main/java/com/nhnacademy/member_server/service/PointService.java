@@ -18,5 +18,5 @@ public interface PointService {
     Page<PointHistoryResponse> getHistory(Long memberId, Pageable pageable);
     PointAdminPolicyResponse getRecentPolicy();
     void updatePolicy(PointAdminPolicyRequest requestDto);
-    Long adjustmentMemberPoint(PointAdminAdjustmentRequest request);
+    Long adjustmentMemberPoint(PointAdminAdjustmentRequest requestDto);
 }

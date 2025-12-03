@@ -158,8 +158,13 @@ public class PointServiceImpl implements PointService {
     @Transactional(readOnly = true)
     public PointBalanceResponse getBalance(Long memberId){
         Member member = memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        Long totalEarned = pointHistoryRepository.sumEarnedPoints(memberId);
 
-        return new PointBalanceResponse(member.getId(), member.getCurrentPoint());
+        if (totalEarned == null){
+            totalEarned = 0L;
+        }
+
+        return new PointBalanceResponse(member.getId(), member.getCurrentPoint(), totalEarned);
     }
 
     @Override
@@ -209,10 +214,10 @@ public class PointServiceImpl implements PointService {
     }
 
     @Override
-    public Long adjustmentMemberPoint(PointAdminAdjustmentRequest request) {
-        Member member = memberRepository.findByIdForUpdate(request.getMemberId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    public Long adjustmentMemberPoint(PointAdminAdjustmentRequest requestDto) {
+        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        long amount = request.getAmount();
+        long amount = requestDto.getAmount();
         if (amount == 0) {
             throw new BusinessException(INVALID_INPUT_VALUE);
         }
@@ -232,7 +237,7 @@ public class PointServiceImpl implements PointService {
         long newBalance = member.getCurrentPoint() + amount;
         member.setCurrentPoint(newBalance);
 
-        String description = String.format("%s (사유: %s)", eventType.getDescription(), request.getReason());
+        String description = String.format("%s (사유: %s)", eventType.getDescription(), requestDto.getReason());
 
         pointHistoryRepository.save(new PointHistory(
                 null,
