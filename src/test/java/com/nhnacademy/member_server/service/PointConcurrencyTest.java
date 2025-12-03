@@ -20,15 +20,32 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest
 @ActiveProfiles("test")
+@SpringBootTest(properties = {
+        "management.health.redis.enabled=false",
+        "app.rabbitmq.enabled=false",
+        "management.health.rabbit.enabled=false",
+})
 class PointConcurrencyTest {
 
     @Autowired PointService pointService;
     @Autowired MemberRepository memberRepository;
     @Autowired GradeRepository gradeRepository;
+
+    @MockitoBean
+    private RedisTemplate<String, Object> redisTemplate;
+
+    @MockitoBean
+    private RedisConnectionFactory redisConnectionFactory;
+
+    @MockitoBean
+    private ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
 
     private Long memberId;
 
