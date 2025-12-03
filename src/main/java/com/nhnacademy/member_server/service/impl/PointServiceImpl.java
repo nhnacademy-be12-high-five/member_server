@@ -199,6 +199,7 @@ public class PointServiceImpl implements PointService {
                 .signupPoint(policy.getSignupPoint())
                 .reviewPoint(policy.getReviewPoint())
                 .photoPoint(policy.getPhotoPoint())
+                .updatedAt(policy.getUpdatedAt())
                 .build();
     }
 
