@@ -20,7 +20,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect #(H2가 MySQL처럼 동작하게 함)
+        dialect: org.hibernate.dialect.MySQLDialect # Hibernate가 운영 환경과 동일한 SQL생성
 
   sql:
     init:
