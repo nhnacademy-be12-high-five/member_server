@@ -2,9 +2,9 @@ package com.nhnacademy.member_server.service.impl;
 
 import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
-import com.nhnacademy.member_server.entity.Gender;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.Status;
+import com.nhnacademy.member_server.repository.AddressRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.MemberService;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
+    private final AddressRepository addressRepository;
 
     @Override
     @Transactional
@@ -60,4 +61,6 @@ public class MemberServiceImpl implements MemberService {
 
         return MemberResponse.from(member);
     }
+
+
 }
