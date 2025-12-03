@@ -9,11 +9,11 @@ public interface AddressService {
 
     AddressListResponse findAddressList(Long memberId);
 
-    AddressResponse findAddress(Long addressId);
+    AddressResponse findAddress(Long memberId, Long addressId);
 
     AddressResponse registerAddress(Long memberId, AddressRequest addressRequest);
 
-    AddressResponse modifyAddress(Long addressId, AddressRequest addressRequest);
+    AddressResponse modifyAddress(Long memberId, Long addressId, AddressRequest addressRequest);
 
     void removeAddress(Long memberId, Long addressId);
 

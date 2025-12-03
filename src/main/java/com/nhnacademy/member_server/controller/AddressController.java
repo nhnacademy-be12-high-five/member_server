@@ -5,6 +5,7 @@ import com.nhnacademy.member_server.dto.response.AddressListResponse;
 import com.nhnacademy.member_server.dto.response.AddressResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.service.AddressService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,8 +37,10 @@ public class AddressController {
 
     //특정 주소 정보 불러오기 (address Id 기준)
     @GetMapping("/{addressId}")
-    public ResponseEntity<AddressResponse> getAddress(@PathVariable Long addressId) {
-        AddressResponse addressResponse = addressService.findAddress(addressId);
+    public ResponseEntity<AddressResponse> getAddress(@AuthenticationPrincipal MemberPrincipal principal,
+                                                       @PathVariable Long addressId) {
+        Long memberId = principal.getMemberId();
+        AddressResponse addressResponse = addressService.findAddress(memberId, addressId);
         return ResponseEntity.ok(addressResponse);
     }
 
@@ -45,7 +48,7 @@ public class AddressController {
     //주소 추가하기
     @PostMapping
     public ResponseEntity<AddressResponse> createAddress(@AuthenticationPrincipal MemberPrincipal principal,
-                                                         @RequestBody AddressRequest addressRequest) {
+                                                         @Valid @RequestBody AddressRequest addressRequest) {
         Long memberId = principal.getMemberId();
         AddressResponse addressResponse = addressService.registerAddress(memberId, addressRequest);
         return ResponseEntity.ok(addressResponse);
@@ -61,9 +64,11 @@ public class AddressController {
 
     //특정 주소 업데이트
     @PatchMapping("/{addressId}")
-    public ResponseEntity<AddressResponse> updateAddress(@RequestBody AddressRequest addressRequest,
+    public ResponseEntity<AddressResponse> updateAddress(@AuthenticationPrincipal MemberPrincipal principal,
+                                                         @RequestBody AddressRequest addressRequest,
                                                          @PathVariable Long addressId) {
-        AddressResponse addressResponse = addressService.modifyAddress(addressId, addressRequest);
+        Long memberId = principal.getMemberId();
+        AddressResponse addressResponse = addressService.modifyAddress(memberId, addressId, addressRequest);
         return ResponseEntity.ok(addressResponse);
     }
 

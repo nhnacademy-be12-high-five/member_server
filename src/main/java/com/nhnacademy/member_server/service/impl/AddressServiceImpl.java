@@ -48,8 +48,9 @@ public class AddressServiceImpl implements AddressService {
 
     @Transactional(readOnly = true)
     @Override
-    public AddressResponse findAddress(Long addressId) {
+    public AddressResponse findAddress(Long memberId, Long addressId) {
         Address address = addressRepository.findById(addressId).orElseThrow(() -> new RuntimeException("존재하지 않는 주소"));
+        if(!address.getMember().getId().equals(memberId)) throw new RuntimeException("사용자의 주소만 조회할 수 있습니다");
         return AddressResponse.from(address);
     }
 
@@ -78,9 +79,9 @@ public class AddressServiceImpl implements AddressService {
 
     @Transactional
     @Override
-    public AddressResponse modifyAddress(Long addressId, AddressRequest addressRequest) {
+    public AddressResponse modifyAddress(Long memberId, Long addressId, AddressRequest addressRequest) {
         Address address = addressRepository.findById(addressId).orElseThrow(() -> new RuntimeException("존재하지 않는 주소 조회"));
-
+        if(!address.getMember().getId().equals(memberId)) throw new RuntimeException("사용자의 주소에 대한 요청이 이닙니다");
         address.setAlias(addressRequest.getAlias());
         address.setRoadAddress(addressRequest.getRoadAddress());
         address.setDetailAddress(addressRequest.getDetailAddress());
