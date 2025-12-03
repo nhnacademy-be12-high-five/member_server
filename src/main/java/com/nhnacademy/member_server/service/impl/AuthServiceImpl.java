@@ -7,10 +7,12 @@ import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.entity.Status;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
+import com.nhnacademy.member_server.repository.CartRepository;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.CartService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,7 +54,6 @@ public class AuthServiceImpl implements AuthService {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Member inputMember =  userDetails.getMember();
         Member dbMember = memberRepository.findById(inputMember.getId()).orElseThrow(() -> new RuntimeException("존재하지 않는 회원"));
-
         dbMember.setLastLoginAt(LocalDateTime.now());
 
         Long memberId = userDetails.getMember().getId();
