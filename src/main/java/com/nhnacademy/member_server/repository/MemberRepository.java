@@ -2,6 +2,8 @@ package com.nhnacademy.member_server.repository;
 
 import com.nhnacademy.member_server.entity.Member;
 import jakarta.persistence.LockModeType;
+
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.validation.constraints.Email;
@@ -23,4 +25,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from Member m where m.id = :id")
     Optional<Member> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("SELECT m.id FROM Member m WHERE MONTH(m.birthDate) = :month")
+    List<Long> findAllIdsByBirthMonth(@Param("month") int month);
 }

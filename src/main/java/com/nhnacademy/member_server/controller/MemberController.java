@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
@@ -65,7 +67,7 @@ public class MemberController {
         Long memberId = principal.getMemberId();
         String role = principal.getRole();
         String loginId = principal.getLoginId();
-        return ResponseEntity.ok(memberId +"마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
+        return ResponseEntity.ok(getMemberId +"마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
     }
 
     //어드민 테스트용
@@ -77,5 +79,15 @@ public class MemberController {
         String role = principal.getRole();
         String loginId = principal.getLoginId();
         return ResponseEntity.ok("admin 마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
+    }
+
+
+    @GetMapping("/birthday")
+    public ResponseEntity<List<Long>> getBirthdayMemberIds(
+            @RequestParam("month") int month
+    ) {
+        List<Long> memberIds = memberService.getBirthdayMemberIds(month);
+
+        return ResponseEntity.ok(memberIds);
     }
 }
