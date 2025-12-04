@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class MemberServiceImpl implements MemberService {
@@ -62,5 +64,13 @@ public class MemberServiceImpl implements MemberService {
         return MemberResponse.from(member);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getBirthdayMemberIds(int month) {
+        if (month < 1 || month > 12) {
+            throw new RuntimeException("1월에서 12월 사이여야 합니다.");
+        }
+        return memberRepository.findAllIdsByBirthMonth(month);
+    }
 
 }
