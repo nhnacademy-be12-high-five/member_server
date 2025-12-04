@@ -1,6 +1,5 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.docs.CartSwagger;
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
@@ -28,9 +27,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/cart")
+@RequestMapping("/api/cart")
 @RequiredArgsConstructor
-public class CartController implements CartSwagger {
+public class CartController{
 
     private final CartService cartService;
 
