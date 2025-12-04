@@ -2,10 +2,7 @@ package com.nhnacademy.member_server.service.impl;
 
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
-import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartDetailResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
+import com.nhnacademy.member_server.dto.cartResponse.*;
 import com.nhnacademy.member_server.entity.cartEntity.Cart;
 import com.nhnacademy.member_server.entity.cartEntity.CartItem;
 import com.nhnacademy.member_server.exception.BusinessException;
@@ -83,9 +80,16 @@ public class CartServiceImpl implements CartService {
 
             redisTemplate.expire(key, 7, TimeUnit.DAYS);
 
-            return calculateCartResponse(redisItems, hasGuestCart);
+            try {
+                return calculateCartResponse(redisItems, hasGuestCart);
+            } catch (Exception e) {
+                // e.getMessage()가 null일 수 있으니 e 자체를 로깅
+                log.error("Book Service 연동 또는 데이터 계산 실패", e);
+                throw new BusinessException(ErrorCode.BOOK_SERVICE_ERROR); // 에러 코드를 분리하는 것을 추천
+            }
+
         } catch (Exception e) {
-            log.error("장바구니 조회 중 redis error: {}", e.getMessage());
+            log.error("장바구니 조회 중 redis error: ", e);
 
             /// 여기에 레디스 쪽이 고장났을 경우 임의로 DB 에서 꺼내오는 로직을 작성 할 수 있음
             throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
@@ -219,7 +223,14 @@ public class CartServiceImpl implements CartService {
             // 합치기 수량
             for (Map.Entry<Object, Object> entry : guestItems.entrySet()) {
                 String bookId = (String) entry.getKey();
-                int quantity = Integer.parseInt((String) entry.getValue());
+                Object value = entry.getValue();
+
+                int quantity;
+                try {
+                    quantity = Integer.parseInt(String.valueOf(value));
+                } catch (NumberFormatException e) {
+                    quantity = 0;
+                }
 
                 // 여기서 redis의 장점이 나옴 없으면 생성 있으면 증가
                 redisTemplate.opsForHash().increment(memberKey, bookId, quantity);
@@ -279,87 +290,95 @@ public class CartServiceImpl implements CartService {
         }
     }
 
-        ///  헬퍼 메서드
+    ///  헬퍼 메서드
 
-        // feignClient로 책 정보 조회 및 DTO 변환 메서드
-        private CartListResponse calculateCartResponse (Map < Object, Object > redisItems,boolean hasGuestCart){
-            // 책 ID 리스트 추출
-            List<Long> bookIds = new ArrayList<>();
-            Map<Long, Integer> quantityMap = new HashMap<>();
+// feignClient로 책 정보 조회 및 DTO 변환 메서드
+    private CartListResponse calculateCartResponse(Map<Object, Object> redisItems, boolean hasGuestCart) {
+        List<Long> bookIds = new ArrayList<>();
+        Map<Long, Integer> quantityMap = new HashMap<>();
 
-            for (Map.Entry<Object, Object> entry : redisItems.entrySet()) {
-                try {
-                    Long bId = Long.valueOf((String) entry.getKey());
-                    Integer qty = Integer.parseInt((String) entry.getValue());
-                    bookIds.add(bId);
-                    quantityMap.put(bId, qty);
-                } catch (NumberFormatException e) {
-                    log.warn("Redis 장바구니 데이터 파싱 에러 (무시됨) - Key: {}, Value: {}", entry.getKey(), entry.getValue());
-                    // 잘못된 데이터는 건너뛰고 계속 진행
-                }
-            }
-
-            if (bookIds.isEmpty()) {
-                return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
-            }
-
-            // Feign과 bookId로 책 정보 Bulk 조회
-            List<CartDetailResponse> bookInfoList;
+        // 1. Redis 데이터 파싱 (Integer 캐스팅 안전하게)
+        for (Map.Entry<Object, Object> entry : redisItems.entrySet()) {
             try {
-                bookInfoList = bookFeignClient.getBooksBulk(bookIds);
-            } catch (FeignException e) {
-                log.error("Book Service 연동 실패: {}", e.getMessage());
-                throw new BusinessException(ErrorCode.BOOK_SERVICE_UNAVAILABLE);
+                Long bookId = Long.valueOf(String.valueOf(entry.getKey()));
+
+                Object value = entry.getValue();
+                int quantity = 0;
+                if (value instanceof Integer) {
+                    quantity = (Integer) value;
+                } else if (value != null) {
+                    quantity = Integer.parseInt(String.valueOf(value));
+                }
+
+                bookIds.add(bookId);
+                quantityMap.put(bookId, quantity);
+            } catch (NumberFormatException e) {
+                log.warn("Redis 데이터 파싱 중 잘못된 형식 발견: key={}, value={}", entry.getKey(), entry.getValue());
+                // 잘못된 데이터는 무시하고 계속 진행
             }
-
-            // 검색 쉽게 하기 위해 map 으로 바꿈
-            Map<Long, CartDetailResponse> bookMap = bookInfoList.stream()
-                    .collect(Collectors.toMap(CartDetailResponse::bookId, b -> b));
-
-            // Redis 수량 + 책 정보 합치기
-            List<CartDetailResponse> responseList = new ArrayList<>();
-            long totalCartPrice = 0L;
-            for (Long bookId : bookIds) {
-                CartDetailResponse book = bookMap.get(bookId);
-
-                if (book == null) continue; // 책 정보가 없으면 스킵 (혹은 삭제 처리)
-
-                // redis에 담긴 bookId에 해당하는 수량 꺼내기
-                int quantity = Integer.parseInt((String) redisItems.get(String.valueOf(bookId)));
-                long itemTotalPrice = book.price() * quantity;
-                totalCartPrice += itemTotalPrice;
-                responseList.add(new CartDetailResponse(
-                        book.bookId(), book.title(), book.author(), book.price(),
-                        quantity, itemTotalPrice, book.image()
-                ));
-            }
-            return new CartListResponse(responseList, totalCartPrice, hasGuestCart);
         }
 
-        // --- redis 복구 메소드 ---
-        private Map<Object, Object> loadFromDbAndRestoreToRedis (Long memberId, String key){
-            // 1. DB에서 회원의 장바구니 아이템 조회 (Fetch Join 등으로 성능 최적화 추천)
-            // CartRepository -> CartItemRepository를 통해 조회
-            List<CartItem> dbItems = cartItemRepository.findByCart_Member_Id(memberId);
-
-            if (dbItems.isEmpty()) {
-                return Collections.emptyMap();
-            }
-
-            // 2. DB 데이터를 Redis 포맷(Map)으로 변환
-            Map<String, String> restoreData = new HashMap<>();
-            for (CartItem item : dbItems) {
-                restoreData.put(String.valueOf(item.getBookId()), String.valueOf(item.getQuantity()));
-            }
-
-            // 3. Redis에 '몰아넣기' (Restore)
-            redisTemplate.opsForHash().putAll(key, restoreData);
-
-            // 4. Redis 수명 설정 (회원이니 넉넉하게 다시 시작)
-            redisTemplate.expire(key, 7, TimeUnit.DAYS);
-
-            log.info("장바구니에서 db 데이터 redis로 변환: {}", memberId);
-
-            return new HashMap<>(restoreData);
+        if (bookIds.isEmpty()) {
+            return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
         }
+
+        List<GetBookResponse> bookInfos = bookFeignClient.getBooksBulk(bookIds);
+        if (bookInfos == null) {
+            log.warn("Book Service에서 null 응답을 받았습니다. bookIds={}", bookIds);
+            bookInfos = Collections.emptyList(); // 빈 리스트로 대체하여 에러 방지
+        }
+
+        List<CartDetailResponse> cartDetails = new ArrayList<>();
+        long totalPrice = 0L;
+
+        // 3. 데이터 조립 (용의자 1 검거)
+        for (GetBookResponse book : bookInfos) {
+            if (book == null) continue; // 리스트 안에 null이 있을 경우 대비
+
+            int quantity = quantityMap.getOrDefault(book.bookId(), 0);
+
+            // [핵심] 가격이 null이면 0원으로 처리하여 NPE 방지
+            int price = (book.price() != null) ? book.price() : 0;
+            int itemTotalPrice = price * quantity;
+
+            cartDetails.add(new CartDetailResponse(
+                    book.bookId(),
+                    book.title(),
+                    price,          // 안전한 price 사용
+                    quantity,
+                    itemTotalPrice,
+                    book.image()
+            ));
+            totalPrice += itemTotalPrice;
+        }
+
+        return new CartListResponse(cartDetails, totalPrice, hasGuestCart);
     }
+
+    // --- redis 복구 메소드 ---
+    private Map<Object, Object> loadFromDbAndRestoreToRedis(Long memberId, String key) {
+        // 1. DB에서 회원의 장바구니 아이템 조회 (Fetch Join 등으로 성능 최적화 추천)
+        // CartRepository -> CartItemRepository를 통해 조회
+        List<CartItem> dbItems = cartItemRepository.findByCart_Member_Id(memberId);
+
+        if (dbItems.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // 2. DB 데이터를 Redis 포맷(Map)으로 변환
+        Map<String, String> restoreData = new HashMap<>();
+        for (CartItem item : dbItems) {
+            restoreData.put(String.valueOf(item.getBookId()), String.valueOf(item.getQuantity()));
+        }
+
+        // 3. Redis에 '몰아넣기' (Restore)
+        redisTemplate.opsForHash().putAll(key, restoreData);
+
+        // 4. Redis 수명 설정 (회원이니 넉넉하게 다시 시작)
+        redisTemplate.expire(key, 7, TimeUnit.DAYS);
+
+        log.info("장바구니에서 db 데이터 redis로 변환: {}", memberId);
+
+        return new HashMap<>(restoreData);
+    }
+}
