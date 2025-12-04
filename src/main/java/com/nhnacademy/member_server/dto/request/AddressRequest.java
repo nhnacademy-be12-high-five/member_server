@@ -1,9 +1,7 @@
 package com.nhnacademy.member_server.dto.request;
 
-import com.nhnacademy.member_server.dto.response.AddressResponse;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
 public class AddressRequest {
