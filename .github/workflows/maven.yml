@@ -35,7 +35,7 @@ jobs:
     with:
       project-key: team5-member-service
       docker-image: fbxogns123/member-server
-      container-name: order_server
+      container-name: member_server
       # 배포 단계에서는 속도를 위해 테스트 스킵 (이미 PR에서 통과했으므로)
       maven-args: "-B -DskipTests"
       # 배포 활성화
