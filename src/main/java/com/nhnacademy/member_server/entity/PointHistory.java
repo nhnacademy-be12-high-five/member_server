@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -54,6 +55,7 @@ public class PointHistory {
     @Column(nullable = false)
     private Long pointBalance;
 
+    @Builder
     public PointHistory(Long orderId, Member member, Long amount, String description, PointEventType pointEventType, Long pointBalance) {
         this.orderId = orderId;
         this.member = member;
