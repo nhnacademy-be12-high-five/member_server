@@ -306,6 +306,115 @@ class PointServiceImplTest {
                 .isEqualTo(ErrorCode.POINT_NOT_ENOUGH);
     }
 
+    @Test
+    @DisplayName("사용/환불 실패: 주문번호 누락")
+    void transaction_Fail_NoOrderId() {
+        // given
+        PointTransactionRequest request = new PointTransactionRequest(1L, 1000L, null); // OrderId Null
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.usePoint(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.POINT_NOT_ORDER_ID);
+
+        assertThatThrownBy(() -> pointServiceImpl.revertPoint(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.POINT_NOT_ORDER_ID);
+    }
+
+    @Test
+    @DisplayName("사용/환불 실패: 금액이 0원 이하")
+    void transaction_Fail_InvalidAmount() {
+        // given
+        PointTransactionRequest request = new PointTransactionRequest(1L, 0L, 1L); // 금액 0원
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.usePoint(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("잔액 조회 실패: 존재하지 않는 회원")
+    void getBalance_Fail_MemberNotFound() {
+        // given
+        Long memberId = 999L;
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.getBalance(memberId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("수동 조정 실패: 금액 0원")
+    void adjustment_Fail_ZeroAmount() {
+        // given
+        Long memberId = 1L;
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(createMember(memberId, 100L)));
+
+        PointAdminAdjustmentRequest request = new PointAdminAdjustmentRequest(memberId, 0L, "테스트");
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.adjustmentMemberPoint(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("수동 조정 실패: 회원id x")
+    void adjustment_Fail_MemberNotFound() {
+        // given
+        Long memberId = 999L;
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.empty());
+
+        PointAdminAdjustmentRequest request = new PointAdminAdjustmentRequest(memberId, 1000L, "테스트");
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.adjustmentMemberPoint(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("주문 적립 실패: 금액 or 주문번호 x")
+    void earnPoint_Fail_InvalidOrderRequest() {
+        // given
+        Long memberId = 1L;
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(createMember(memberId, 0L)));
+
+        // 금액 누락
+        PointEarnRequest request1 = new PointEarnRequest(memberId, PointEventType.EARN_ORDER, null, 1L);
+        // 주문번호 누락
+        PointEarnRequest request2 = new PointEarnRequest(memberId,  PointEventType.EARN_ORDER, 10000L,null);
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.earnPoint(request1))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+
+        assertThatThrownBy(() -> pointServiceImpl.earnPoint(request2))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("적립 실패: 정책 데이터가 DB에 x")
+    void earnPoint_Fail_NoPolicy() {
+        // given
+        Long memberId = 1L;
+        when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(createMember(memberId, 0L)));
+        when(pointPolicyRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(null); // 정책 없음!
+
+        PointEarnRequest request = new PointEarnRequest(memberId,  PointEventType.EARN_REVIEW, null,null);
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.earnPoint(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.POINT_NOT_POLICY);
+    }
+
     private Member createMember(Long id, Long point) {
         Grade grade = Grade.builder()
                 .gradeName("GENERAL")
