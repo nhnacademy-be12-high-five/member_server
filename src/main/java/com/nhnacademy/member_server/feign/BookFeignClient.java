@@ -1,6 +1,5 @@
 package com.nhnacademy.member_server.feign;
 
-import com.nhnacademy.member_server.dto.cartResponse.CartDetailResponse;
 import java.util.List;
 
 import com.nhnacademy.member_server.dto.cartResponse.GetBookResponse;

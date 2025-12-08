@@ -6,6 +6,7 @@ import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
+import com.nhnacademy.member_server.entity.cartEntity.Cart;
 import com.nhnacademy.member_server.service.CartService;
 import com.nhnacademy.member_server.utils.CookieUtils;
 import jakarta.servlet.http.HttpServletResponse;
@@ -125,4 +126,7 @@ public class CartController{
         }
         return ResponseEntity.noContent().build();
     }
+
+
+
 }
