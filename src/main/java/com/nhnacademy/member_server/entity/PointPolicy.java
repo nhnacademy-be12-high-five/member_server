@@ -9,7 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -20,7 +20,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "point_policy")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-@AllArgsConstructor
 public class PointPolicy {
 
     @Id
@@ -39,4 +38,11 @@ public class PointPolicy {
 
     @Column(nullable = false)
     private Integer photoPoint;
+
+    @Builder
+    private PointPolicy(int signupPoint, int reviewPoint, int photoPoint) {
+        this.signupPoint = signupPoint;
+        this.reviewPoint = reviewPoint;
+        this.photoPoint = photoPoint;
+    }
 }
