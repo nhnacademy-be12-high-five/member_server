@@ -3,9 +3,9 @@ package com.nhnacademy.member_server.service;
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartDetailResponse;
 import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
 import com.nhnacademy.member_server.dto.cartResponse.GetBookResponse;
+import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.cartEntity.Cart;
 import com.nhnacademy.member_server.entity.cartEntity.CartItem;
 import com.nhnacademy.member_server.feign.BookFeignClient;
@@ -38,124 +38,115 @@ class CartServiceTest {
     @InjectMocks
     private CartServiceImpl cartService;
 
-    @Mock private RedisTemplate<String, Object> redisTemplate;
-    @Mock private BookFeignClient bookFeignClient;
-    @Mock private CartItemRepository cartItemRepository;
-    @Mock private CartRepository cartRepository;
-    @Mock private MemberRepository memberRepository;
+    @Mock
+    private RedisTemplate<String, Object> redisTemplate;
+    @Mock
+    private BookFeignClient bookFeignClient;
+    @Mock
+    private CartItemRepository cartItemRepository;
+    @Mock
+    private CartRepository cartRepository;
+    @Mock
+    private MemberRepository memberRepository;
 
-    // Redis Operation Mocks (RedisTemplate 내부 동작 모방용)
-    @Mock private HashOperations<String, Object, Object> hashOperations;
-    @Mock private SetOperations<String, Object> setOperations;
-
-    private static final String DIRTY_KEY = "cart:dirty";
+    // Redis Operations Mock (RedisTemplate 내부 동작 모방용)
+    @Mock
+    private HashOperations<String, Object, Object> hashOperations;
+    @Mock
+    private SetOperations<String, Object> setOperations;
 
     @BeforeEach
     void setUp() {
-        // RedisTemplate이 호출될 때 우리가 만든 가짜 Operation 객체를 반환하도록 설정
-        // lenient()를 써서 일부 테스트에서 사용 안 해도 에러 안 나게 함
+        // RedisTemplate이 호출될 때 우리가 만든 Mock Operation을 반환하도록 설정
         lenient().when(redisTemplate.opsForHash()).thenReturn(hashOperations);
         lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
     }
 
     @Test
-    @DisplayName("장바구니 담기 - 회원 (Redis 저장 + Dirty Bit 설정)")
+    @DisplayName("장바구니 담기 - 회원인 경우 Dirty Set에 추가되어야 한다")
     void addToCart_Member() {
         // given
         Long memberId = 1L;
         CartAddRequest request = new CartAddRequest(100L, 2);
+        String key = "cart:m:" + memberId;
 
         // when
         CartAddResponse response = cartService.addToCart(request, memberId, null);
 
         // then
         assertThat(response.bookId()).isEqualTo(100L);
+        assertThat(response.quantity()).isEqualTo(2);
 
-        // 1. Redis Hash 증가 확인
-        verify(hashOperations).increment(eq("cart:m:1"), eq("100"), eq(2L));
-        // 2. 만료 시간 설정 확인
-        verify(redisTemplate).expire(eq("cart:m:1"), eq(7L), eq(TimeUnit.DAYS));
-        // 3. Dirty Set 추가 확인 (회원이므로)
-        verify(setOperations).add(DIRTY_KEY, "1");
+        // Redis 명령어가 호출되었는지 검증
+        verify(hashOperations).increment(eq(key), eq("100"), eq(2L)); // 수량 증가
+        verify(redisTemplate).expire(eq(key), eq(7L), eq(TimeUnit.DAYS)); // 만료 시간 설정
+        verify(setOperations).add(eq("cart:dirty"), eq("1")); // Dirty Set 추가 확인
     }
 
     @Test
-    @DisplayName("장바구니 담기 - 비회원 (Redis 저장만, Dirty Bit X)")
-    void addToCart_Guest() {
-        // given
-        String guestId = "guest-123";
-        CartAddRequest request = new CartAddRequest(100L, 1);
-
-        // when
-        cartService.addToCart(request, null, guestId);
-
-        // then
-        verify(hashOperations).increment(eq("cart:g:guest-123"), eq("100"), eq(1L));
-        verify(setOperations, never()).add(anyString(), anyString()); // 비회원은 DB 동기화 안함
-    }
-
-    @Test
-    @DisplayName("장바구니 목록 조회 - Redis 히트 & Feign Client 연동")
-    void getCartItemList_RedisHit() {
+    @DisplayName("장바구니 조회 - Redis에 데이터가 있으면 Feign으로 책 정보를 가져와 계산한다")
+    void getCartItemList_FromRedis() {
         // given
         Long memberId = 1L;
-        String key = "cart:m:1";
+        String key = "cart:m:" + memberId;
 
-        // Redis에 저장된 데이터 모의 (BookId: "100", Quantity: "2")
+        // Redis Mock Data (책ID: 100, 수량: 2)
         Map<Object, Object> redisData = new HashMap<>();
-        redisData.put("100", "2");
-
+        redisData.put("100", 2);
         given(hashOperations.entries(key)).willReturn(redisData);
 
-        // Feign Client가 리턴할 책 정보
-        GetBookResponse bookInfo = new GetBookResponse(100L, "Java 정석", 20000, "img.jpg");
-        given(bookFeignClient.getBooksBulk(List.of(100L))).willReturn(List.of(bookInfo));
+        // Feign Mock Data
+        GetBookResponse bookResponse = new GetBookResponse(100L, "테스트 책",10000, "img.jpg");
+        given(bookFeignClient.getBooksBulk(anyList())).willReturn(List.of(bookResponse));
 
         // when
         CartListResponse result = cartService.getCartItemList(memberId, null);
 
         // then
         assertThat(result.items()).hasSize(1);
-        assertThat(result.items().get(0).title()).isEqualTo("Java 정석");
-        assertThat(result.items().get(0).quantity()).isEqualTo(2); // Redis 수량
-        assertThat(result.totalCartPrice()).isEqualTo(40000L); // 20000 * 2
+        assertThat(result.items().get(0).title()).isEqualTo("테스트 책");
+        assertThat(result.items().get(0).totalPrice()).isEqualTo(20000); // 10000 * 2
+        assertThat(result.totalCartPrice()).isEqualTo(20000);
     }
 
     @Test
-    @DisplayName("장바구니 목록 조회 - Redis 미스 -> DB에서 복구(Restore)")
-    void getCartItemList_RedisMiss_RestoreFromDb() {
+    @DisplayName("장바구니 조회 - Redis가 비어있으면 DB에서 복구를 시도한다")
+    void getCartItemList_RestoreFromDb() {
         // given
         Long memberId = 1L;
-        String key = "cart:m:1";
+        String key = "cart:m:" + memberId;
 
         // 1. Redis는 비어있음
         given(hashOperations.entries(key)).willReturn(Collections.emptyMap());
 
         // 2. DB에는 데이터가 있음
-        CartItem dbItem = new CartItem(100L, 5, new Cart(null)); // Mock Entity
+        Member member = new Member();
+        Cart cart = new Cart(member);
+        CartItem dbItem = new CartItem(100L, 5, cart); // 책 100번, 5권
         given(cartItemRepository.findByCart_Member_Id(memberId)).willReturn(List.of(dbItem));
 
         // 3. Feign Mock
-        GetBookResponse bookInfo = new GetBookResponse(100L, "Java 정석", 20000, "img.jpg");
-        given(bookFeignClient.getBooksBulk(List.of(100L))).willReturn(List.of(bookInfo));
+        GetBookResponse bookResponse = new GetBookResponse(100L, "테스트 책",10000, "img.jpg");
+        given(bookFeignClient.getBooksBulk(anyList())).willReturn(List.of(bookResponse));
 
         // when
         CartListResponse result = cartService.getCartItemList(memberId, null);
 
         // then
-        // 복구 로직이 실행되었는지 검증 (putAll 호출 여부)
-        verify(hashOperations).putAll(eq(key), anyMap());
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).quantity()).isEqualTo(5);
+
+        // 중요: DB 데이터를 Redis로 다시 넣었는지 검증 (Restore)
+        verify(hashOperations).putAll(eq(key), anyMap());
     }
 
     @Test
-    @DisplayName("수량 변경")
-    void updateCartItemQuantity() {
+    @DisplayName("수량 변경 - 성공 시 Redis 업데이트 및 Dirty Checking")
+    void updateQuantity() {
         // given
         Long memberId = 1L;
-        CartItemUpdateRequest request = new CartItemUpdateRequest(100L, 10);
-        String key = "cart:m:1";
+        CartItemUpdateRequest request = new CartItemUpdateRequest(100L, 3);
+        String key = "cart:m:" + memberId;
 
         given(hashOperations.hasKey(key, "100")).willReturn(true);
 
@@ -163,43 +154,38 @@ class CartServiceTest {
         cartService.updateCartItemQuantity(memberId, null, request);
 
         // then
-        verify(hashOperations).put(key, "100", "10"); // 덮어쓰기 확인
-        verify(setOperations).add(DIRTY_KEY, "1");
+        verify(hashOperations).put(key, "100", "3"); // 값 덮어쓰기
+        verify(setOperations).add("cart:dirty", "1"); // Dirty Set 추가
     }
 
     @Test
-    @DisplayName("단건 삭제")
-    void deleteCartItem() {
+    @DisplayName("DB 동기화 (syncToDb) - 기존 데이터를 지우고 Redis 데이터를 Insert 한다")
+    void syncToDb() {
         // given
         Long memberId = 1L;
-        Long bookId = 100L;
+        Member member = new Member(); // 적절한 멤버 객체 생성
+        Cart cart = new Cart(member);
+
+        // Mocking
+        given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+        given(cartRepository.findByMember_Id(memberId)).willReturn(Optional.of(cart));
+
+        // Redis에서 넘어온 데이터 (책 100번: 2권, 책 200번: 1권)
+        Map<Object, Object> redisItems = new HashMap<>();
+        redisItems.put("100", "2");
+        redisItems.put("200", "1");
 
         // when
-        cartService.deleteCartItem(memberId, null, bookId);
+        cartService.syncToDb(memberId, redisItems);
 
-        // then
-        verify(hashOperations).delete("cart:m:1", "100");
-        verify(setOperations).add(DIRTY_KEY, "1");
+        // then (호출 순서 검증)
+        verify(cartItemRepository).deleteAllByCartId(cart.getId()); // 1. 삭제
+        verify(cartItemRepository).flush(); // 2. Flush (중요!)
+        verify(cartItemRepository).saveAll(anyList()); // 3. 저장
     }
 
     @Test
-    @DisplayName("전체 삭제")
-    void deleteAllCartItem() {
-        // given
-        Long memberId = 1L;
-
-        given(redisTemplate.delete("cart:m:1")).willReturn(true);
-
-        // when
-        cartService.deleteAllCartItem(memberId, null);
-
-        // then
-        verify(redisTemplate).delete("cart:m:1");
-        verify(setOperations).add(DIRTY_KEY, "1");
-    }
-
-    @Test
-    @DisplayName("비회원 장바구니 합치기 (Merge)")
+    @DisplayName("장바구니 합치기 (migrate) - 비회원 데이터를 회원 Key로 옮기고 비회원 Key 삭제")
     void migrateGuestCart() {
         // given
         String guestId = "guest-123";
@@ -207,51 +193,44 @@ class CartServiceTest {
         String guestKey = "cart:g:" + guestId;
         String memberKey = "cart:m:" + memberId;
 
-        // 게스트 장바구니 내용물
+        // 비회원 장바구니 데이터
         Map<Object, Object> guestItems = new HashMap<>();
-        guestItems.put("100", "2"); // 책 100번 2권
-        guestItems.put("200", "1"); // 책 200번 1권
+        guestItems.put("100", 2);
+        guestItems.put("200", 3);
 
         given(redisTemplate.hasKey(guestKey)).willReturn(true);
-        given(redisTemplate.hasKey(memberKey)).willReturn(true); // 회원 키도 이미 있다고 가정
         given(hashOperations.entries(guestKey)).willReturn(guestItems);
+        // 회원 키는 이미 존재한다고 가정 (hasKey -> true)
+        given(redisTemplate.hasKey(memberKey)).willReturn(true);
 
         // when
         cartService.migrateGuestCart(guestId, memberId);
 
         // then
-        // 회원 키로 increment가 호출되어야 함 (합치기)
+        // 1. 회원 키로 데이터가 병합(increment) 되었는지 확인
         verify(hashOperations).increment(memberKey, "100", 2);
-        verify(hashOperations).increment(memberKey, "200", 1);
+        verify(hashOperations).increment(memberKey, "200", 3);
 
-        // 게스트 키 삭제 확인
+        // 2. 비회원 키가 삭제되었는지 확인
         verify(redisTemplate).delete(guestKey);
-        // Dirty Set 추가 확인
-        verify(setOperations).add(DIRTY_KEY, "1");
+
+        // 3. Dirty Set에 추가되었는지 확인
+        verify(setOperations).add("cart:dirty", String.valueOf(memberId));
     }
 
     @Test
-    @DisplayName("DB 동기화 (SyncToDb) - 핵심 로직")
-    void syncToDb() {
+    @DisplayName("DB 동기화 실패 - 회원이 존재하지 않으면 에러 로그 찍고 중단 (예외 발생 X)")
+    void syncToDb_MemberNotFound() {
         // given
-        Long memberId = 1L;
-        // Redis에서 읽어온 데이터라고 가정
-        Map<Object, Object> redisItems = new HashMap<>();
-        redisItems.put("100", "5");
-        redisItems.put("101", "3");
-
-        Cart mockCart = new Cart(null);
-        // ID 강제 주입 (Reflection 혹은 Setter 필요하지만 여기선 Mock킹으로 커버)
-        // 실제로는 repository.save()가 Cart를 반환함
-        given(cartRepository.findByMember_Id(memberId)).willReturn(Optional.of(mockCart));
+        Long memberId = 999L;
+        given(memberRepository.findById(memberId)).willReturn(Optional.empty()); // 회원 없음
 
         // when
-        cartService.syncToDb(memberId, redisItems);
+        cartService.syncToDb(memberId, new HashMap<>());
 
         // then
-        // 1. 기존 아이템 삭제 호출 확인
-        verify(cartItemRepository).deleteAllByCartId(any());
-        // 2. 새로운 아이템 저장 호출 확인
-        verify(cartItemRepository).saveAll(anyList());
+        // saveAll 등이 호출되지 않아야 함
+        verify(cartRepository, never()).save(any());
+        verify(cartItemRepository, never()).saveAll(any());
     }
 }

@@ -50,52 +50,7 @@ public class CartServiceImpl implements CartService {
         return "cart:g:" + guestId;
     }
 
-//    // 장바구니 리스트 조회
-//    @Override
-//    @Transactional(readOnly = true)
-//    public CartListResponse getCartItemList(Long memberId, String guestId) {
-//        boolean hasGuestCart = false;
-//        // 방어 로직
-//        if (memberId == null && guestId == null) {
-//            return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
-//        }
-//
-//        String key = getRedisKey(memberId, guestId);
-//        try {
-//            Map<Object, Object> redisItems = redisTemplate.opsForHash().entries(key);
-//
-//            // 혹시 모르니 한번 더 체크
-//            if (redisItems.isEmpty() && memberId != null) {
-//                redisItems = loadFromDbAndRestoreToRedis(memberId, key);
-//            }
-//
-//            if (memberId != null && guestId != null) {
-//                String guestKey = "cart:g:" + guestId;
-//                // Redis에 키가 존재하고, 내용물이 비어있지 않은지 체크
-//                hasGuestCart = redisTemplate.hasKey(guestKey);
-//            }
-//
-//            if (redisItems.isEmpty()) {
-//                return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
-//            }
-//
-//            redisTemplate.expire(key, 7, TimeUnit.DAYS);
-//
-//            try {
-//                return calculateCartResponse(redisItems, hasGuestCart);
-//            } catch (Exception e) {
-//                // e.getMessage()가 null일 수 있으니 e 자체를 로깅
-//                log.error("Book Service 연동 또는 데이터 계산 실패", e);
-//                throw new BusinessException(ErrorCode.BOOK_SERVICE_ERROR); // 에러 코드를 분리하는 것을 추천
-//            }
-//
-//        } catch (Exception e) {
-//            log.error("장바구니 조회 중 redis error: ", e);
-//
-//            /// 여기에 레디스 쪽이 고장났을 경우 임의로 DB 에서 꺼내오는 로직을 작성 할 수 있음
-//            throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
-//        }
-//    }
+
 
     // 로그인 시 비동기 복구 -> 로그인 직후 실행됨
     @Async
@@ -308,68 +263,6 @@ public class CartServiceImpl implements CartService {
 
     ///  헬퍼 메서드
 
-// feignClient로 책 정보 조회 및 DTO 변환 메서드
-//    private CartListResponse calculateCartResponse(Map<Object, Object> redisItems, boolean hasGuestCart) {
-//        List<Long> bookIds = new ArrayList<>();
-//        Map<Long, Integer> quantityMap = new HashMap<>();
-//
-//        // 1. Redis 데이터 파싱 (Integer 캐스팅 안전하게)
-//        for (Map.Entry<Object, Object> entry : redisItems.entrySet()) {
-//            try {
-//                Long bookId = Long.valueOf(String.valueOf(entry.getKey()));
-//
-//                Object value = entry.getValue();
-//                int quantity = 0;
-//                if (value instanceof Integer) {
-//                    quantity = (Integer) value;
-//                } else if (value != null) {
-//                    quantity = Integer.parseInt(String.valueOf(value));
-//                }
-//
-//                bookIds.add(bookId);
-//                quantityMap.put(bookId, quantity);
-//            } catch (NumberFormatException e) {
-//                log.warn("Redis 데이터 파싱 중 잘못된 형식 발견: key={}, value={}", entry.getKey(), entry.getValue());
-//                // 잘못된 데이터는 무시하고 계속 진행
-//            }
-//        }
-//
-//        if (bookIds.isEmpty()) {
-//            return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
-//        }
-//
-//        List<GetBookResponse> bookInfos = bookFeignClient.getBooksBulk(bookIds);
-//        if (bookInfos == null) {
-//            log.warn("Book Service에서 null 응답을 받았습니다. bookIds={}", bookIds);
-//            bookInfos = Collections.emptyList(); // 빈 리스트로 대체하여 에러 방지
-//        }
-//
-//        List<CartDetailResponse> cartDetails = new ArrayList<>();
-//        long totalPrice = 0L;
-//
-//        // 3. 데이터 조립 (용의자 1 검거)
-//        for (GetBookResponse book : bookInfos) {
-//            if (book == null) continue; // 리스트 안에 null이 있을 경우 대비
-//
-//            int quantity = quantityMap.getOrDefault(book.bookId(), 0);
-//
-//            // [핵심] 가격이 null이면 0원으로 처리하여 NPE 방지
-//            int price = (book.price() != null) ? book.price() : 0;
-//            int itemTotalPrice = price * quantity;
-//
-//            cartDetails.add(new CartDetailResponse(
-//                    book.bookId(),
-//                    book.title(),
-//                    price,          // 안전한 price 사용
-//                    quantity,
-//                    itemTotalPrice,
-//                    book.image()
-//            ));
-//            totalPrice += itemTotalPrice;
-//        }
-//
-//        return new CartListResponse(cartDetails, totalPrice, hasGuestCart);
-//    }
     // [디버깅용] 장바구니 리스트 조회
     @Override
     @Transactional(readOnly = true)
