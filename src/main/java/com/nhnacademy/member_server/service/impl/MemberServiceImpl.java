@@ -2,6 +2,7 @@ package com.nhnacademy.member_server.service.impl;
 
 import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
+import com.nhnacademy.member_server.dto.response.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.entity.Status;
@@ -84,6 +85,24 @@ public class MemberServiceImpl implements MemberService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         member.setRole(newRole);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SimpleMemberResponse> getMembersInfo(List<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Object[]> results = memberRepository.findSimpleMembers(memberIds);
+
+        return results.stream()
+                .map(row -> SimpleMemberResponse.builder()
+                        .memberId((Long) row[0])
+                        .loginId((String) row[1])
+                        .build())
+                .toList();
     }
 
 }

@@ -29,4 +29,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("SELECT m.id FROM Member m WHERE MONTH(m.birthDate) = :month")
     List<Long> findAllIdsByBirthMonth(@Param("month") int month);
 
+    @Query("SELECT m.id, m.loginId, m.name FROM Member m WHERE m.id IN :memberIds")
+    List<Object[]> findSimpleMembers(@Param("memberIds") List<Long> memberIds);
 }
