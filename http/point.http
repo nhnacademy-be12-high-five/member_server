@@ -1,3 +1,56 @@
+@host = http://localhost:8082
+
+POST {{host}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "loginId": "u",
+  "password": "u",
+  "name": "김철수",
+  "phone": "010-1234-5672",
+  "email": "test@nhn2.com",
+  "birthDate": "1999-01-02",
+  "gender": "FEMALE",
+  "role": "USER"
+}
+
+
+### 로그인
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "loginId": "u",
+  "password": "u"
+}
+
+> {%
+    // 응답에서 accessToken을 꺼내서 'access_token'이라는 이름으로 저장합니다.
+    client.global.set("access_token", response.body.accessToken);
+
+    // 잘 저장됐는지 로그로 확인
+    client.log("저장된 토큰: " + client.global.get("access_token"));
+%}
+
+
+### 3. 내 포인트 잔액 조회
+GET http://localhost:8082/api/points/balance
+Authorization: Bearer {{access_token}}
+
+
+###  로그아웃
+POST {{host}}/api/auth/logout
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+> {%
+    client.test("로그아웃 성공 확인", function() {
+        client.assert(response.status === 200, "응답 코드가 200 OK가 아닙니다.");
+    });
+%}
+
+
+
 ### 1 결제 - 포인트 사용
 # 기대 결과: 200 OK / DB 잔액 9000원
 POST http://localhost:9002/internal/points/use
@@ -86,12 +139,13 @@ Content-Type: application/json
 
 
 ### 3. 내 포인트 잔액 조회
-GET http://localhost:9002/api/points/balance
-X-USER-ID: 1
+GET http://localhost:8082/api/points/balance
+Authorization: Bearer {{access_token}}
 
 ### 3.1. 내 포인트 이력 조회 (기본값: 0페이지, 10개)
-GET http://localhost:9002/api/points/history
-X-USER-ID: 1
+GET http://localhost:8082/api/points/history
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
 
 ### 3.2. 내 포인트 이력 조회 (페이징 테스트)
 GET http://localhost:9002/api/points/history?page=5&size=10
@@ -103,7 +157,15 @@ X-USER-ID: 99999
 
 
 
+### 관리자 권한으로 100번 유저에게 5만 포인트 지급
+POST http://localhost:8082/member/api/admin/points/adjustment
+Content-Type: application/json
 
+{
+  "memberId": 2,
+  "amount": 50000,
+  "reason": "테스트용 용돈 지급"
+}
 
 ### 4. 현재 포인트 정책 조회
 GET http://localhost:9002/api/admin/points/policy
@@ -126,7 +188,7 @@ POST http://localhost:9002/api/admin/points/adjustment
 Content-Type: application/json
 
 {
-  "memberId": 1,
+  "memberId": 5,
   "amount": 3000,
   "reason": "배송 지연 보상금"
 }

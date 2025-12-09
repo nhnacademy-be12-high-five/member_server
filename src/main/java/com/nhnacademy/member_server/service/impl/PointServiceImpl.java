@@ -24,7 +24,6 @@ import com.nhnacademy.member_server.repository.PointHistoryRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.PointService;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -199,18 +198,19 @@ public class PointServiceImpl implements PointService {
                 .signupPoint(policy.getSignupPoint())
                 .reviewPoint(policy.getReviewPoint())
                 .photoPoint(policy.getPhotoPoint())
+                .updatedAt(policy.getUpdatedAt())
                 .build();
     }
 
     @Override // 새 정책 insert
     public void updatePolicy(PointAdminPolicyRequest requestDto){
-        pointPolicyRepository.save(new PointPolicy(
-                null,
-                LocalDateTime.now(),
-                requestDto.getSignupPoint(),
-                requestDto.getReviewPoint(),
-                requestDto.getPhotoPoint()
-        ));
+        pointPolicyRepository.save(
+                PointPolicy.builder()
+                        .signupPoint(requestDto.getSignupPoint())
+                        .reviewPoint(requestDto.getReviewPoint())
+                        .photoPoint(requestDto.getPhotoPoint())
+                        .build()
+        );
     }
 
     @Override

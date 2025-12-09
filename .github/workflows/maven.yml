@@ -7,17 +7,21 @@ on:
     branches: [ "main", "dev" ]
 
 jobs:
-  # PR 검증용 Job (배포 X, 테스트 O)
+  # 1. PR 검증용 Job (배포 X, 테스트 O)
   ci-check:
     if: github.event_name == 'pull_request'
     uses: nhnacademy-be12-high-five/.github/.github/workflows/service-workflow.yml@main
     with:
       project-key: team5-member-service
       docker-image: fbxogns123/member-server
-      container-name: member_server
-      # 테스트를 수행해 품질 검사
+
+      # [수정 1] 컨테이너 기본 이름을 'member-server' (하이픈)로 수정
+      container-name: member-server
+
+      # [수정 2] 다중 인스턴스 옵션 추가 (PR 단계에선 배포 안 하지만 명시)
+      is-multi-instance: true
+
       maven-args: "-B"
-      # 배포 비활성화
       deploy-enabled: false
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -28,17 +32,22 @@ jobs:
       SSH_PW: ${{ secrets.SSH_PW }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
 
-  # 실제 배포용 Job (Merge 시 실행)
+  # 2. 실제 배포용 Job (Merge/Push 시 실행)
   cd-deploy:
     if: github.event_name == 'push'
     uses: nhnacademy-be12-high-five/.github/.github/workflows/service-workflow.yml@main
     with:
       project-key: team5-member-service
       docker-image: fbxogns123/member-server
-      container-name: order_server
-      # 배포 단계에서는 속도를 위해 테스트 스킵 (이미 PR에서 통과했으므로)
+
+      # [수정 1] 실제 docker-compose 서비스명(member-server-1, member-server-2)의 접두사로 수정
+      # 기존 member_server (언더바) -> member-server (하이픈)
+      container-name: member-server
+
+      # [수정 2] 인스턴스가 2개이므로 다중 인스턴스 배포 옵션 활성화
+      is-multi-instance: true
+
       maven-args: "-B -DskipTests"
-      # 배포 활성화
       deploy-enabled: true
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
