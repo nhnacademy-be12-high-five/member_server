@@ -3,7 +3,10 @@ package com.nhnacademy.member_server.service.impl;
 import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
 import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.entity.Status;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.AddressRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.MemberService;
@@ -11,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -71,6 +75,15 @@ public class MemberServiceImpl implements MemberService {
             throw new RuntimeException("1월에서 12월 사이여야 합니다.");
         }
         return memberRepository.findAllIdsByBirthMonth(month);
+    }
+
+    @Override
+    @Transactional
+    public void updateRole(Long memberId, Role newRole) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        member.setRole(newRole);
     }
 
 }
