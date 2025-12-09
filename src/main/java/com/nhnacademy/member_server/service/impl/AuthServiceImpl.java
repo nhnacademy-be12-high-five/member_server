@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.service.impl;
 
+import com.nhnacademy.member_server.dto.message.CouponIssueMessage;
 import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.TokenDto;
 import com.nhnacademy.member_server.entity.Grade;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final GradeRepository gradeRepository;
+    private final RabbitTemplate rabbitTemplate;
 
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
@@ -107,7 +110,16 @@ public class AuthServiceImpl implements AuthService {
                 .grade(basicGrade)
                 .build();
 
-        memberRepository.save(member);
+        Member savedMember = memberRepository.save(member);
+
+        try {
+            CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
+            rabbitTemplate.convertAndSend("coupon-welcome-queue", message);
+            log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
+        }catch (Exception e){
+            log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
+        }
+
     }
 
     @Override
