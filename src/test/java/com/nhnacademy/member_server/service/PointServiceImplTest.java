@@ -210,7 +210,7 @@ class PointServiceImplTest {
 
         Page<PointHistory> historyPage = new PageImpl<>(List.of(history));
 
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.existsById(memberId)).thenReturn(true);
         when(pointHistoryRepository.findAllByMemberId(memberId, pageable)).thenReturn(historyPage);
 
         Page<PointHistoryResponse> result = pointServiceImpl.getHistory(memberId, pageable);
