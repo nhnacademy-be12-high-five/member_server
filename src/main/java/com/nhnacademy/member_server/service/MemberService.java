@@ -2,6 +2,7 @@ package com.nhnacademy.member_server.service;
 
 import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
+import com.nhnacademy.member_server.dto.response.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.Role;
 
 import java.util.List;
@@ -18,4 +19,5 @@ public interface MemberService {
 
     void updateRole(Long memberId, Role newRole);
 
+    List<SimpleMemberResponse> getMembersInfo(List<Long> memberIds);
 }

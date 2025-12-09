@@ -2,6 +2,7 @@ package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
+import com.nhnacademy.member_server.dto.response.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
@@ -103,4 +104,9 @@ public class MemberController {
         return ResponseEntity.ok("회원(" + memberId + ")의 권한이 " + role + "로 변경되었습니다.");
     }
 
+    @PostMapping("/list")
+    public ResponseEntity<List<SimpleMemberResponse>> getMembersInfo(@RequestBody List<Long> memberIds) {
+        List<SimpleMemberResponse> responseList = memberService.getMembersInfo(memberIds);
+        return ResponseEntity.ok(responseList);
+    }
 }
