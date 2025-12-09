@@ -2,7 +2,9 @@ package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.MemberResponse;
+import com.nhnacademy.member_server.dto.response.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
+import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.service.AuthService;
 import com.nhnacademy.member_server.service.MemberService;
@@ -58,6 +60,8 @@ public class MemberController {
                 .build();
     }
 
+
+
     //테스트용
     @GetMapping("/my-page")
     public ResponseEntity<String> getMyPage(
@@ -89,5 +93,20 @@ public class MemberController {
         List<Long> memberIds = memberService.getBirthdayMemberIds(month);
 
         return ResponseEntity.ok(memberIds);
+    }
+
+    @PutMapping("/{memberId}/role")
+    public ResponseEntity<String> updateMemberRole(
+            @PathVariable Long memberId,
+            @RequestParam Role role
+    ) {
+        memberService.updateRole(memberId, role);
+        return ResponseEntity.ok("회원(" + memberId + ")의 권한이 " + role + "로 변경되었습니다.");
+    }
+
+    @PostMapping("/list")
+    public ResponseEntity<List<SimpleMemberResponse>> getMembersInfo(@RequestBody List<Long> memberIds) {
+        List<SimpleMemberResponse> responseList = memberService.getMembersInfo(memberIds);
+        return ResponseEntity.ok(responseList);
     }
 }
