@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.dto.response;
 
+import com.nhnacademy.member_server.entity.PointHistory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -29,4 +30,15 @@ public class PointHistoryResponse {
 
     @Schema(description = "관련 주문 번호 (없으면 null)", example = "1")
     private Long orderId;
+
+    public static PointHistoryResponse from(PointHistory entity) {
+        return PointHistoryResponse.builder()
+                .id(entity.getId())
+                .amount(entity.getAmount())
+                .description(entity.getDescription())
+                .currentPoint(entity.getPointBalance())
+                .transactionDate(entity.getCreatedAt())
+                .orderId(entity.getOrderId())
+                .build();
+    }
 }

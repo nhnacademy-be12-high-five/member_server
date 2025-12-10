@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.dto.response;
 
+import com.nhnacademy.member_server.entity.PointPolicy;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -23,5 +24,14 @@ public class PointAdminPolicyResponse {
 
     @Schema(description = "정책 업데이트된 시간 (현재시각)")
     private LocalDateTime updatedAt;
+
+    public static PointAdminPolicyResponse from(PointPolicy entity) {
+        return PointAdminPolicyResponse.builder()
+                .signupPoint(entity.getSignupPoint())
+                .reviewPoint(entity.getReviewPoint())
+                .photoPoint(entity.getPhotoPoint())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
 
 }

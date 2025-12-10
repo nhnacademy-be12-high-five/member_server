@@ -82,7 +82,7 @@ class PointServiceImplTest {
     void usePoints_Fail_NotEnough() {
         // given
         Long memberId = 1L;
-        Member member = createMember(memberId, 1000L);;
+        Member member = createMember(memberId, 1000L);
 
         when(memberRepository.findByIdForUpdate(memberId)).thenReturn(Optional.of(member));
 
@@ -210,7 +210,7 @@ class PointServiceImplTest {
 
         Page<PointHistory> historyPage = new PageImpl<>(List.of(history));
 
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.existsById(memberId)).thenReturn(true);
         when(pointHistoryRepository.findAllByMemberId(memberId, pageable)).thenReturn(historyPage);
 
         Page<PointHistoryResponse> result = pointServiceImpl.getHistory(memberId, pageable);
@@ -244,7 +244,7 @@ class PointServiceImplTest {
         assertThatThrownBy(() -> pointServiceImpl.getRecentPolicy())
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.POINT_NOT_POLICY);
+                .isEqualTo(ErrorCode.POINT_POLICY_NOT_FOUND);
     }
 
     // Point Admin API
@@ -412,7 +412,7 @@ class PointServiceImplTest {
         // when & then
         assertThatThrownBy(() -> pointServiceImpl.earnPoint(request))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.POINT_NOT_POLICY);
+                .extracting("errorCode").isEqualTo(ErrorCode.POINT_POLICY_NOT_FOUND);
     }
 
     private Member createMember(Long id, Long point) {

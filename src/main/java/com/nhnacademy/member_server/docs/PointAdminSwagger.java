@@ -17,6 +17,7 @@ public interface PointAdminSwagger {
     @Operation(summary = "포인트 정책 조회", description = "현재 적용 중인 최신 포인트 정책을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "404", description = "포인트 정책이 설정되지 않았습니다"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     ResponseEntity<PointAdminPolicyResponse> getPolicy();
