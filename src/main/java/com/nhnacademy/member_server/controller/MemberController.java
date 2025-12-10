@@ -58,15 +58,7 @@ public class MemberController {
         authService.logout(WebUtils.getToken(bearerHeader), memberId);
         memberService.withdraw(memberId);
 
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
-                .path("/")
-                .httpOnly(true)
-                .secure(false)
-                .maxAge(0)
-                .build();
-
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
-                .build();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/birthday")
@@ -78,9 +70,9 @@ public class MemberController {
         return ResponseEntity.ok(memberIds);
     }
 
-    @PutMapping("/{memberId}/role")
+    @PutMapping("/{member-id}/role")
     public ResponseEntity<String> updateMemberRole(
-            @PathVariable Long memberId,
+            @PathVariable("member-id") Long memberId,
             @RequestParam Role role
     ) {
         memberService.updateRole(memberId, role);
