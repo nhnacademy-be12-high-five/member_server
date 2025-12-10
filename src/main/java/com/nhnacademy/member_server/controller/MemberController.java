@@ -9,14 +9,23 @@ import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.service.AuthService;
 import com.nhnacademy.member_server.service.MemberService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/members")
@@ -26,14 +35,14 @@ public class MemberController {
     private final MemberService memberService;
     private final AuthService authService;
 
-    @GetMapping
+    @GetMapping("/me")
     public ResponseEntity<MemberResponse> getMember(@AuthenticationPrincipal MemberPrincipal principal) {
         Long memberId = principal.getMemberId();
         MemberResponse response = memberService.getMember(memberId);
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping
+    @PatchMapping("/me")
     public ResponseEntity<MemberResponse> updateMember(@AuthenticationPrincipal MemberPrincipal principal,
                                                        @Valid @RequestBody MemberUpdateRequest memberUpdateRequest) {
         Long memberId = principal.getMemberId();
@@ -42,49 +51,15 @@ public class MemberController {
     }
 
 
-    @DeleteMapping("/withdraw")
+    @DeleteMapping("me/withdraw")
     public ResponseEntity<Void> withdraw(@AuthenticationPrincipal MemberPrincipal principal,
                                          @RequestHeader(HttpHeaders.AUTHORIZATION) String bearerHeader) {
         Long memberId = principal.getMemberId();
         authService.logout(WebUtils.getToken(bearerHeader), memberId);
         memberService.withdraw(memberId);
 
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
-                .path("/")
-                .httpOnly(true)
-                .secure(false)
-                .maxAge(0)
-                .build();
-
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
-                .build();
+        return ResponseEntity.ok().build();
     }
-
-
-
-    //테스트용
-    @GetMapping("/my-page")
-    public ResponseEntity<String> getMyPage(
-            @RequestHeader("X-User-ID") Long getMemberId,
-            @AuthenticationPrincipal MemberPrincipal principal
-    ) {
-        Long memberId = principal.getMemberId();
-        String role = principal.getRole();
-        String loginId = principal.getLoginId();
-        return ResponseEntity.ok(getMemberId +"마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
-    }
-
-    //어드민 테스트용
-    @GetMapping("/admin/my-page")
-    public ResponseEntity<String> getAdminMyPage(
-            @AuthenticationPrincipal MemberPrincipal principal
-    ) {
-        Long memberId = principal.getMemberId();
-        String role = principal.getRole();
-        String loginId = principal.getLoginId();
-        return ResponseEntity.ok("admin 마이페이지 접근 성공! 당신의 member_Id는: " + memberId + " role : " + role + " Login_id : "  + loginId);
-    }
-
 
     @GetMapping("/birthday")
     public ResponseEntity<List<Long>> getBirthdayMemberIds(
@@ -95,9 +70,9 @@ public class MemberController {
         return ResponseEntity.ok(memberIds);
     }
 
-    @PutMapping("/{memberId}/role")
+    @PutMapping("/{member-id}/role")
     public ResponseEntity<String> updateMemberRole(
-            @PathVariable Long memberId,
+            @PathVariable("member-id") Long memberId,
             @RequestParam Role role
     ) {
         memberService.updateRole(memberId, role);

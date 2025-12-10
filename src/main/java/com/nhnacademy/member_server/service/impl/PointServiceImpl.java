@@ -4,7 +4,7 @@ import static com.nhnacademy.member_server.exception.ErrorCode.INVALID_INPUT_VAL
 import static com.nhnacademy.member_server.exception.ErrorCode.MEMBER_NOT_FOUND;
 import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ENOUGH;
 import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ORDER_ID;
-import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_POLICY;
+import static com.nhnacademy.member_server.exception.ErrorCode.POINT_POLICY_NOT_FOUND;
 
 import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
 import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
@@ -68,7 +68,7 @@ public class PointServiceImpl implements PointService {
             default -> {
                 PointPolicy policy = pointPolicyRepository.findTopByOrderByUpdatedAtDesc();
                 if (policy == null) {
-                    throw new BusinessException(POINT_NOT_POLICY);
+                    throw new BusinessException(POINT_POLICY_NOT_FOUND);
                 }
 
                 pointToEarn = switch (requestDto.getEventType()) {
@@ -169,19 +169,12 @@ public class PointServiceImpl implements PointService {
     @Override
     @Transactional(readOnly = true)
     public Page<PointHistoryResponse> getHistory(Long memberId, Pageable pageable){
-        memberRepository.findById(memberId).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+        if (!memberRepository.existsById(memberId)) {
+            throw new BusinessException(MEMBER_NOT_FOUND);
+        }
 
-        Page<PointHistory> historyPage = pointHistoryRepository.findAllByMemberId(memberId, pageable);
-
-        // Page 객체의 map 메서드로 리스트 안의 내용물을 하나씩 바꿈
-        return historyPage.map(entity -> new PointHistoryResponse(
-                entity.getId(),
-                entity.getAmount(),
-                entity.getDescription(),
-                entity.getPointBalance(), // DTO - currentPoint
-                entity.getCreatedAt(),    // DTO - transactionDate
-                entity.getOrderId()
-        ));
+        return pointHistoryRepository.findAllByMemberId(memberId, pageable)
+                .map(PointHistoryResponse::from);
     }
 
     // 관리자용 메서드
@@ -191,15 +184,10 @@ public class PointServiceImpl implements PointService {
         PointPolicy policy = pointPolicyRepository.findTopByOrderByUpdatedAtDesc();
 
         if(policy == null){
-            throw new BusinessException(ErrorCode.POINT_NOT_POLICY);
+            throw new BusinessException(ErrorCode.POINT_POLICY_NOT_FOUND);
         }
 
-        return PointAdminPolicyResponse.builder()
-                .signupPoint(policy.getSignupPoint())
-                .reviewPoint(policy.getReviewPoint())
-                .photoPoint(policy.getPhotoPoint())
-                .updatedAt(policy.getUpdatedAt())
-                .build();
+        return PointAdminPolicyResponse.from(policy);
     }
 
     @Override // 새 정책 insert

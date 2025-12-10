@@ -34,18 +34,9 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<TokenDto> login(@RequestBody LoginRequest loginRequest) {
         TokenDto tokenDto = authService.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(refreshExpirationTime)
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new LoginResponse(tokenDto.getAccessToken()));
+        return ResponseEntity.ok(tokenDto);
     }
 
     @PostMapping("/signup")
@@ -61,42 +52,20 @@ public class AuthController {
 
 
     @PostMapping("/reissue")
-    public ResponseEntity<LoginResponse> reissue(
-            @CookieValue(name = "refresh-token", required = false) String refreshToken
+    public ResponseEntity<TokenDto> reissue(
+            @RequestHeader("X-Refresh-Token") String refreshToken
     ) {
-        if (refreshToken == null) {
-            throw new RuntimeException("Refresh Token 쿠키가 없습니다.");
-        }
-
         TokenDto tokenDto = authService.reissue(refreshToken);
-
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh-token", tokenDto.getRefreshToken())
-                .httpOnly(true)
-                .secure(false)
-                //secure 부분은 배포상태에서 https 사용하면 true로 변경해주기
-                .path("/")
-                .maxAge(refreshExpirationTime)
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new LoginResponse(tokenDto.getAccessToken()));
+        return ResponseEntity.ok(tokenDto);
     }
 
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestHeader(name = "X-User-ID") long loginId,
-                                       @RequestHeader(HttpHeaders.AUTHORIZATION) String bearerHeader) {
-        authService.logout(WebUtils.getToken(bearerHeader), loginId);
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
-                .path("/")
-                .httpOnly(true)
-                .secure(false)
-                .maxAge(0)
-                .build();
+    public ResponseEntity<Void> logout(@RequestHeader(name = "X-User-ID") Long memberId,
+                                       @RequestHeader(HttpHeaders.AUTHORIZATION) String bearerToken) {
 
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
-                .build();
+        authService.logout(WebUtils.getToken(bearerToken), memberId);
+        return ResponseEntity.ok().build();
     }
 
 

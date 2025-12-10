@@ -7,11 +7,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class PointEarnRequest { //
     @NotNull(message = "회원 아이디는 필수입니다")
     @Schema(description = "포인트 적립 될 회원 아이디", example = "1")

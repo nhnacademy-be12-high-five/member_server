@@ -1,7 +1,8 @@
 spring:
   application:
-    name: member-server
+    name: TEAM5-MEMBER-SERVER
   config:
+    name: TEAM5-MEMBER-SERVER
     import: "optional:configserver:"
 
 eureka:
