@@ -43,9 +43,9 @@ public class AddressController {
     }
 
     //특정 주소 정보 불러오기 (address Id 기준)
-    @GetMapping("/{addressId}")
+    @GetMapping("/{address-id}")
     public ResponseEntity<AddressResponse> getAddress(@AuthenticationPrincipal MemberPrincipal principal,
-                                                       @PathVariable Long addressId) {
+                                                       @PathVariable("address-id") Long addressId) {
         Long memberId = principal.getMemberId();
         AddressResponse addressResponse = addressService.findAddress(memberId, addressId);
         return ResponseEntity.ok(addressResponse);
@@ -61,28 +61,28 @@ public class AddressController {
         return ResponseEntity.ok(addressResponse);
     }
 
-    @PostMapping("/{addressId}/default")
+    @PostMapping("/{address-id}/default")
     public ResponseEntity<AddressResponse> setDefaultAddress(@AuthenticationPrincipal MemberPrincipal principal,
-                                                             @PathVariable Long addressId) {
+                                                             @PathVariable("address-id") Long addressId) {
         Long memberId = principal.getMemberId();
         AddressResponse addressResponse = addressService.setDefaultAddress(memberId, addressId);
         return ResponseEntity.ok(addressResponse);
     }
 
     //특정 주소 업데이트
-    @PatchMapping("/{addressId}")
+    @PatchMapping("/{address-id}")
     public ResponseEntity<AddressResponse> updateAddress(@AuthenticationPrincipal MemberPrincipal principal,
                                                          @RequestBody AddressRequest addressRequest,
-                                                         @PathVariable Long addressId) {
+                                                         @PathVariable("address-id") Long addressId) {
         Long memberId = principal.getMemberId();
         AddressResponse addressResponse = addressService.modifyAddress(memberId, addressId, addressRequest);
         return ResponseEntity.ok(addressResponse);
     }
 
     //특정 주소 삭제
-    @DeleteMapping("/{addressId}")
+    @DeleteMapping("/{address-id}")
     public ResponseEntity<Void> deleteAddress(@AuthenticationPrincipal MemberPrincipal principal,
-                                              @PathVariable Long addressId) {
+                                              @PathVariable("address-id") Long addressId) {
         Long memberId = principal.getMemberId();
         addressService.removeAddress(memberId, addressId);
         return ResponseEntity.ok().build();

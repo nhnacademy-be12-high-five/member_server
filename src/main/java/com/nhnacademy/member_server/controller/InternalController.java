@@ -16,9 +16,9 @@ public class InternalController {
 
     private final MemberService memberService;
 
-    @PutMapping("/{memberId}/role")
+    @PutMapping("/{member-id}/role")
     public ResponseEntity<String> updateMemberRole(
-            @PathVariable Long memberId,
+            @PathVariable("member-id") Long memberId,
             @RequestParam Role role
     ) {
         memberService.updateRole(memberId, role);
