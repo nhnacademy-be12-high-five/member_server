@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.service;
+package com.nhnacademy.member_server.service.member;
 
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;

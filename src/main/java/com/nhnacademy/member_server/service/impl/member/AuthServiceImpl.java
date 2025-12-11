@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.service.impl;
+package com.nhnacademy.member_server.service.impl.member;
 
 import com.nhnacademy.member_server.dto.message.CouponIssueMessage;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
@@ -11,7 +11,7 @@ import com.nhnacademy.member_server.global.jwt.JwtUtil;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
-import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.member.AuthService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;

@@ -5,7 +5,7 @@ import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.repository.MemberRepository;
-import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.member.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;

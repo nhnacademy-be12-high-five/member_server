@@ -7,7 +7,7 @@ import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.entity.Gender;
 import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.repository.MemberRepository;
-import com.nhnacademy.member_server.service.AuthService;
+import com.nhnacademy.member_server.service.member.AuthService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

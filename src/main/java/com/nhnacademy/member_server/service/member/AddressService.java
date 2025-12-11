@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.service;
+package com.nhnacademy.member_server.service.member;
 
 import com.nhnacademy.member_server.dto.request.member.AddressRequest;
 import com.nhnacademy.member_server.dto.response.member.AddressListResponse;

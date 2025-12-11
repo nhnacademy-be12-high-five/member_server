@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.service.impl;
+package com.nhnacademy.member_server.service.impl.member;
 
 import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.member.MemberResponse;
@@ -10,7 +10,7 @@ import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.AddressRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
-import com.nhnacademy.member_server.service.MemberService;
+import com.nhnacademy.member_server.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

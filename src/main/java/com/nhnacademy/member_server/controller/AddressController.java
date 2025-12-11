@@ -4,7 +4,7 @@ import com.nhnacademy.member_server.dto.request.member.AddressRequest;
 import com.nhnacademy.member_server.dto.response.member.AddressListResponse;
 import com.nhnacademy.member_server.dto.response.member.AddressResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
-import com.nhnacademy.member_server.service.AddressService;
+import com.nhnacademy.member_server.service.member.AddressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
