@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.entity.Role;
-import com.nhnacademy.member_server.service.MemberService;
+import com.nhnacademy.member_server.entity.member.Role;
+import com.nhnacademy.member_server.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;

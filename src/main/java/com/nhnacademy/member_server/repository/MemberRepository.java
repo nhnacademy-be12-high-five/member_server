@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.repository;
 
-import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.entity.member.Member;
 import jakarta.persistence.LockModeType;
 
 import java.util.List;
@@ -31,4 +31,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Query("SELECT m.id, m.loginId, m.name FROM Member m WHERE m.id IN :memberIds")
     List<Object[]> findSimpleMembers(@Param("memberIds") List<Long> memberIds);
+
+    Optional<Member> findByProviderId(String providerId);
 }

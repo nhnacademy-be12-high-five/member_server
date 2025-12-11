@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto.response;  
+package com.nhnacademy.member_server.dto.response.member;
   
 import lombok.AllArgsConstructor;  
 import lombok.Builder;  
