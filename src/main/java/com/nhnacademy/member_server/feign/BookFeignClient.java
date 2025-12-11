@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 // 도서 쪽에서 구현하면 책 정보 가져오기
 
-@FeignClient(name = "team5-book-server")
+@FeignClient(name = "TEAM5-BOOK-SERVER")
 public interface BookFeignClient {
 
     @PostMapping("/api/books/bulk")
