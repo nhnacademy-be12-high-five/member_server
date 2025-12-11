@@ -13,7 +13,7 @@ import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
-import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
 import com.nhnacademy.member_server.entity.PointPolicy;

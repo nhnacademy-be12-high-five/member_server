@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.dto.request.member;
 
-import com.nhnacademy.member_server.entity.Gender;
-import com.nhnacademy.member_server.entity.Role;
+import com.nhnacademy.member_server.entity.member.Gender;
+import com.nhnacademy.member_server.entity.member.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

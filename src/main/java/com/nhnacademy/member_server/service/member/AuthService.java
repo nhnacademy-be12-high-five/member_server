@@ -11,4 +11,6 @@ public interface AuthService {
     TokenDto reissue(String refreshToken);
 
     void logout(String accessToken, Long userId);
+
+//    TokenDto loginSocial(String provider, String code);
 }

@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.repository;
 
-import com.nhnacademy.member_server.entity.Grade;
+import com.nhnacademy.member_server.entity.member.Grade;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
