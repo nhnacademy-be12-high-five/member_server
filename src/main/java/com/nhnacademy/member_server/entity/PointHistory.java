@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.entity;
 
+import com.nhnacademy.member_server.entity.member.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;

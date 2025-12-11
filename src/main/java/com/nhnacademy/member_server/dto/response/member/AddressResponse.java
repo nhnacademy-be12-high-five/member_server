@@ -1,6 +1,6 @@
-package com.nhnacademy.member_server.dto.response;
+package com.nhnacademy.member_server.dto.response.member;
 
-import com.nhnacademy.member_server.entity.Address;
+import com.nhnacademy.member_server.entity.member.Address;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

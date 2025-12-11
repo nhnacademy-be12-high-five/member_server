@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.global.jwt;
 
 
-import com.nhnacademy.member_server.entity.Role;
+import com.nhnacademy.member_server.entity.member.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -32,14 +32,13 @@ public class JwtUtil {
     }
 
     //여기서는 Pk로 넣어줘야함 그래야 토큰에서 빼와서 x user id로 검증
-    public String createAccessToken(Long memberId, Role role, String loginId) {
+    public String createAccessToken(Long memberId, Role role) {
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + accessExpirationTime);
 
         return Jwts.builder()
                 .setSubject(String.valueOf(memberId))
                 .claim("role", role.name())
-                .claim("loginId", loginId)
                 .setIssuedAt(now)
                 .setExpiration(expirationDate)
                 .signWith(secretKey, SignatureAlgorithm.HS256)

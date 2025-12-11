@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.repository;
 
-import com.nhnacademy.member_server.entity.Address;
+import com.nhnacademy.member_server.entity.member.Address;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 

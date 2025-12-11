@@ -1,20 +1,17 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
-import com.nhnacademy.member_server.dto.response.MemberResponse;
-import com.nhnacademy.member_server.dto.response.SimpleMemberResponse;
-import com.nhnacademy.member_server.entity.MemberPrincipal;
-import com.nhnacademy.member_server.entity.Role;
+import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
+import com.nhnacademy.member_server.dto.response.member.MemberResponse;
+import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
+import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
-import com.nhnacademy.member_server.service.AuthService;
-import com.nhnacademy.member_server.service.MemberService;
+import com.nhnacademy.member_server.service.member.AuthService;
+import com.nhnacademy.member_server.service.member.MemberService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,37 +33,26 @@ public class MemberController {
     private final AuthService authService;
 
     @GetMapping("/me")
-    public ResponseEntity<MemberResponse> getMember(@AuthenticationPrincipal MemberPrincipal principal) {
-        Long memberId = principal.getMemberId();
+    public ResponseEntity<MemberResponse> getMember(@RequestHeader(name = "X-User-ID") Long memberId){
         MemberResponse response = memberService.getMember(memberId);
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/me")
-    public ResponseEntity<MemberResponse> updateMember(@AuthenticationPrincipal MemberPrincipal principal,
+    public ResponseEntity<MemberResponse> updateMember(@RequestHeader(name = "X-User-ID") Long memberId,
                                                        @Valid @RequestBody MemberUpdateRequest memberUpdateRequest) {
-        Long memberId = principal.getMemberId();
         MemberResponse memberResponse = memberService.updateMember(memberId, memberUpdateRequest);
         return ResponseEntity.ok(memberResponse);
     }
 
 
     @DeleteMapping("me/withdraw")
-    public ResponseEntity<Void> withdraw(@AuthenticationPrincipal MemberPrincipal principal,
+    public ResponseEntity<Void> withdraw(@RequestHeader(name = "X-User-ID") Long memberId,
                                          @RequestHeader(HttpHeaders.AUTHORIZATION) String bearerHeader) {
-        Long memberId = principal.getMemberId();
         authService.logout(WebUtils.getToken(bearerHeader), memberId);
         memberService.withdraw(memberId);
 
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh-token", "")
-                .path("/")
-                .httpOnly(true)
-                .secure(false)
-                .maxAge(0)
-                .build();
-
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
-                .build();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/birthday")
@@ -78,9 +64,9 @@ public class MemberController {
         return ResponseEntity.ok(memberIds);
     }
 
-    @PutMapping("/{memberId}/role")
+    @PutMapping("/{member-id}/role")
     public ResponseEntity<String> updateMemberRole(
-            @PathVariable Long memberId,
+            @PathVariable("member-id") Long memberId,
             @RequestParam Role role
     ) {
         memberService.updateRole(memberId, role);

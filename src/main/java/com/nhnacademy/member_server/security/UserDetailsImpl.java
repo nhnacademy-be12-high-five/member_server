@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.security;
 
-import com.nhnacademy.member_server.entity.Member;
-import com.nhnacademy.member_server.entity.Status;
+import com.nhnacademy.member_server.entity.member.Member;
+import com.nhnacademy.member_server.entity.member.Status;
 import java.util.ArrayList;
 import java.util.Collection;
 import lombok.RequiredArgsConstructor;
