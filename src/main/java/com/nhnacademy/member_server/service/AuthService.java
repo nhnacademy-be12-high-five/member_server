@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.service;
 
-import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
-import com.nhnacademy.member_server.dto.response.TokenDto;
+import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
+import com.nhnacademy.member_server.dto.response.member.TokenDto;
 
 public interface AuthService {
     TokenDto loginUser(String loginId, String password);

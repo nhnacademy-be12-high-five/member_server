@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.service.impl;
 
 import com.nhnacademy.member_server.dto.message.CouponIssueMessage;
-import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
-import com.nhnacademy.member_server.dto.response.TokenDto;
+import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
+import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.entity.Grade;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.entity.Role;

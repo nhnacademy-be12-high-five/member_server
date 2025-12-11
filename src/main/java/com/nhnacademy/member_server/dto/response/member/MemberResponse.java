@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto.response;
+package com.nhnacademy.member_server.dto.response.member;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.nhnacademy.member_server.entity.Member;

@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.service.impl;
 
-import com.nhnacademy.member_server.dto.request.AddressRequest;
-import com.nhnacademy.member_server.dto.response.AddressListResponse;
-import com.nhnacademy.member_server.dto.response.AddressResponse;
+import com.nhnacademy.member_server.dto.request.member.AddressRequest;
+import com.nhnacademy.member_server.dto.response.member.AddressListResponse;
+import com.nhnacademy.member_server.dto.response.member.AddressResponse;
 import com.nhnacademy.member_server.entity.Address;
 import com.nhnacademy.member_server.entity.Member;
 import com.nhnacademy.member_server.repository.AddressRepository;

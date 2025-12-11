@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto.request;
+package com.nhnacademy.member_server.dto.request.member;
 
 import com.nhnacademy.member_server.entity.Gender;
 import jakarta.validation.constraints.Email;

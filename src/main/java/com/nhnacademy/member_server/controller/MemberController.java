@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
-import com.nhnacademy.member_server.dto.response.MemberResponse;
-import com.nhnacademy.member_server.dto.response.SimpleMemberResponse;
+import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
+import com.nhnacademy.member_server.dto.response.member.MemberResponse;
+import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;

@@ -1,9 +1,8 @@
 package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.dto.request.LoginRequest;
-import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
-import com.nhnacademy.member_server.dto.response.LoginResponse;
-import com.nhnacademy.member_server.dto.response.TokenDto;
+import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
+import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.AuthService;
@@ -11,9 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;

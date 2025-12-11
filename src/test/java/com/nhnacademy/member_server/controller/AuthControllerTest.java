@@ -2,8 +2,8 @@ package com.nhnacademy.member_server.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nhnacademy.member_server.dto.request.LoginRequest;
-import com.nhnacademy.member_server.dto.request.MemberCreateRequest;
-import com.nhnacademy.member_server.dto.response.TokenDto;
+import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
+import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.entity.Gender;
 import com.nhnacademy.member_server.entity.Role;
 import com.nhnacademy.member_server.repository.MemberRepository;

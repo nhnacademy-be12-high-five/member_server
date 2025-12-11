@@ -1,12 +1,11 @@
 package com.nhnacademy.member_server.service;
 
-import com.nhnacademy.member_server.dto.request.MemberUpdateRequest;
-import com.nhnacademy.member_server.dto.response.MemberResponse;
-import com.nhnacademy.member_server.dto.response.SimpleMemberResponse;
+import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
+import com.nhnacademy.member_server.dto.response.member.MemberResponse;
+import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.Role;
 
 import java.util.List;
-import java.util.Map;
 
 public interface MemberService {
     void withdraw(Long userId);

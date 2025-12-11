@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.dto.request.AddressRequest;
-import com.nhnacademy.member_server.dto.response.AddressListResponse;
-import com.nhnacademy.member_server.dto.response.AddressResponse;
+import com.nhnacademy.member_server.dto.request.member.AddressRequest;
+import com.nhnacademy.member_server.dto.response.member.AddressListResponse;
+import com.nhnacademy.member_server.dto.response.member.AddressResponse;
 import com.nhnacademy.member_server.entity.MemberPrincipal;
 import com.nhnacademy.member_server.service.AddressService;
 import jakarta.validation.Valid;
