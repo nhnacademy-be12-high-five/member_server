@@ -1,6 +1,5 @@
 package com.nhnacademy.member_server.config;
 
-import com.nhnacademy.member_server.filter.GatewayAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +21,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    private final GatewayAuthenticationFilter gatewayAuthenticationFilter;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
@@ -38,8 +36,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll())
-                        .addFilterBefore(gatewayAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().permitAll());
 
 
         return http.build();

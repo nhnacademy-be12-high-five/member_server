@@ -3,7 +3,7 @@ package com.nhnacademy.member_server.service.impl;
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.*;
-import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.cartEntity.Cart;
 import com.nhnacademy.member_server.entity.cartEntity.CartItem;
 import com.nhnacademy.member_server.exception.BusinessException;
@@ -13,14 +13,14 @@ import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.CartService;
-import feign.FeignException;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -49,8 +49,6 @@ public class CartServiceImpl implements CartService {
         }
         return "cart:g:" + guestId;
     }
-
-
 
     // 로그인 시 비동기 복구 -> 로그인 직후 실행됨
     @Async
@@ -310,13 +308,25 @@ public class CartServiceImpl implements CartService {
             try {
                 // 계산 로직 호출
                 return calculateCartResponse(redisItems, hasGuestCart);
+            } catch (BusinessException be) {
+                // ⭐️[수정 1] 비즈니스 에러는 잡아서 로그만 찍고 바로 다시 던짐 (외부 catch에 잡히지 않게 하거나, 잡혀도 처리되게)
+                throw be;
             } catch (Exception e) {
                 log.error("❌ Book Service 연동 또는 데이터 계산 실패", e);
                 throw new BusinessException(ErrorCode.BOOK_SERVICE_ERROR);
             }
 
         } catch (Exception e) {
-            log.error("❌ 장바구니 조회 중 치명적 에러: ", e);
+            // ⭐️[수정 2] 여기서 중요!
+            // 방금 내부에서 던진 BusinessException이 여기로 넘어옵니다.
+            // 이게 BusinessException이면 또 감싸지 말고 그냥 던져야 진짜 원인을 알 수 있습니다.
+            if (e instanceof BusinessException) {
+                throw (BusinessException) e;
+            }
+
+            log.error("❌ 장바구니 조회 중 치명적 에러 (원인 로그): {}", e.getClass().getName());
+            log.error("❌ 에러 메시지: {}", e.getMessage(), e);
+            // 진짜 Redis나 알 수 없는 시스템 에러일 때만 이걸 던짐
             throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
         } finally {
             log.info("============== [장바구니 조회 종료] ==============");

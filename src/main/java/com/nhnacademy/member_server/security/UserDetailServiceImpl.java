@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.security;
 
-import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;

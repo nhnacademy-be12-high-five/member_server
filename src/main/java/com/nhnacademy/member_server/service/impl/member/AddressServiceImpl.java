@@ -1,13 +1,13 @@
-package com.nhnacademy.member_server.service.impl;
+package com.nhnacademy.member_server.service.impl.member;
 
-import com.nhnacademy.member_server.dto.request.AddressRequest;
-import com.nhnacademy.member_server.dto.response.AddressListResponse;
-import com.nhnacademy.member_server.dto.response.AddressResponse;
-import com.nhnacademy.member_server.entity.Address;
-import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.dto.request.member.AddressRequest;
+import com.nhnacademy.member_server.dto.response.member.AddressListResponse;
+import com.nhnacademy.member_server.dto.response.member.AddressResponse;
+import com.nhnacademy.member_server.entity.member.Address;
+import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.repository.AddressRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
-import com.nhnacademy.member_server.service.AddressService;
+import com.nhnacademy.member_server.service.member.AddressService;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

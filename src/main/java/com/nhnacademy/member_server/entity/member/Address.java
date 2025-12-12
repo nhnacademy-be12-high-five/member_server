@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.entity;
+package com.nhnacademy.member_server.entity.member;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

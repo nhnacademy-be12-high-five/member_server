@@ -9,11 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nhnacademy.member_server.dto.request.PointEarnRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
-import com.nhnacademy.member_server.entity.Grade;
-import com.nhnacademy.member_server.entity.Member;
+import com.nhnacademy.member_server.entity.member.Grade;
+import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.PointEventType;
-import com.nhnacademy.member_server.entity.Role;
-import com.nhnacademy.member_server.entity.Status;
+import com.nhnacademy.member_server.entity.member.Role;
+import com.nhnacademy.member_server.entity.member.Status;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import java.math.BigDecimal;
