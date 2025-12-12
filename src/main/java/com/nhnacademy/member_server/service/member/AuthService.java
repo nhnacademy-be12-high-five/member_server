@@ -12,5 +12,5 @@ public interface AuthService {
 
     void logout(String accessToken, Long userId);
 
-//    TokenDto loginSocial(String provider, String code);
+    TokenDto loginSocial(String provider, String code);
 }
