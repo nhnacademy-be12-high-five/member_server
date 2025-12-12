@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class CartDBSyncService {
     private static final int MAX_SYNC_BATCH_SIZE = 1000;
 
     @Scheduled(fixedDelay = 6_000)
+    @SchedulerLock(name = "CartDBSyncTask", lockAtLeastFor = "5s", lockAtMostFor = "20s")
     public void syncRedisToDb() {
 
         List<Object> memberIdStr = redisTemplate.opsForSet().pop(DIRTY_KEY, MAX_SYNC_BATCH_SIZE);
