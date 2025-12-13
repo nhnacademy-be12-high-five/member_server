@@ -53,7 +53,7 @@ public class CartController{
     }
 
     // 장바구니 비우기
-    @DeleteMapping("/items")
+    @PostMapping("/items")
     public ResponseEntity<Void> deleteAllCartItem(@CookieValue(value = "guestCookie", required = false) String guestId,
                                                   @RequestHeader(name = "X-USER-ID", required = false) Long memberId){
         cartService.deleteAllCartItem(memberId, guestId);
@@ -62,7 +62,7 @@ public class CartController{
     }
 
     // 수량 변경, 책의 아이디와 바뀔 수량은 request에 담겨서 넘어옴
-    @PutMapping("/items")
+    @PostMapping("/items")
     public ResponseEntity<CartUpdateResponse> updateQuantity(@RequestBody @Valid CartItemUpdateRequest request,
                                                              @RequestHeader(name = "X-USER-ID", required = false) Long memberId,
                                                              @CookieValue(value = "guestCookie", required = false) String guestId) {
@@ -71,7 +71,7 @@ public class CartController{
     }
 
     // 책 단건 삭제
-    @DeleteMapping("/items/{bookId}")
+    @PostMapping("/items/{bookId}")
     public ResponseEntity<Void> deleteOneItem(@PathVariable Long bookId,
                                               @RequestHeader(name = "X-USER-ID", required = false) Long memberId,
                                               @CookieValue(value = "guestCookie", required = false) String guestId) {
@@ -94,7 +94,7 @@ public class CartController{
     }
 
     // 장바구니를 합치겠습니까? 했을 때 아니오
-    @DeleteMapping("/guest")
+    @PostMapping("/guest")
     public ResponseEntity<Void> ignoreGuestCart(@CookieValue(value = "guestCookie", required = false) String guestId,
                                                 HttpServletResponse response) {
         if (guestId != null) {
