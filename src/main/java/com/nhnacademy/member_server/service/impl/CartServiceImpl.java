@@ -16,6 +16,7 @@ import com.nhnacademy.member_server.service.CartService;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -170,28 +171,45 @@ public class CartServiceImpl implements CartService {
             return;
         }
 
+        Map<Long, Integer> redisMap = new HashMap<>();
+        if (redisItems != null) {
+            for (Map.Entry<Object, Object> entry : redisItems.entrySet()) {
+                try {
+                    Long bookId = Long.parseLong(String.valueOf(entry.getKey()));
+                    int quantity = Integer.parseInt(String.valueOf(entry.getValue()));
+                    redisMap.put(bookId, quantity);
+                } catch (NumberFormatException e) {
+                    log.warn("스킵 됨 MemberId: {}, Key: {}, Value: {}", memberId, entry.getKey(), entry.getValue());
+                }
+            }
+        }
+
         Cart cart = cartRepository.findByMember_Id(memberId)
                 .orElseGet(() -> cartRepository.save(new Cart(member)));
 
-        cartItemRepository.deleteAllByCartId(cart.getId());
-        cartItemRepository.flush();
+        List<CartItem> dbItems = cartItemRepository.findByCart_Member_Id(memberId);
 
-        if (redisItems != null && !redisItems.isEmpty()) {
-            List<CartItem> items = redisItems.entrySet().stream()
-                    .map(entry -> {
-                        try {
-                            return new CartItem(
-                                    Long.parseLong((String) entry.getKey()),
-                                    Integer.parseInt((String) entry.getValue()),
-                                    cart);
-                        } catch (NumberFormatException e) {
-                            log.warn("Skipping invalid item during sync. MemberId: {}, Item: {}", memberId, entry);
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
+        Iterator<CartItem> iterator = dbItems.iterator();
+        while (iterator.hasNext()) {
+            CartItem dbItem = iterator.next();
+            Long bookId = dbItem.getBookId();
+
+            if (redisMap.containsKey(bookId)) {
+                int redisQty = redisMap.get(bookId);
+                if (dbItem.getQuantity() != redisQty) {
+                    dbItem.updateQuantity(redisQty);
+                }
+                redisMap.remove(bookId);
+            } else {
+                cartItemRepository.delete(dbItem);
+            }
+        }
+
+        if (!redisMap.isEmpty()) {
+            List<CartItem> newItems = redisMap.entrySet().stream()
+                    .map(entry -> new CartItem(entry.getKey(), entry.getValue(), cart))
                     .toList();
-            cartItemRepository.saveAll(items);
+            cartItemRepository.saveAll(newItems);
         }
     }
 
@@ -234,7 +252,7 @@ public class CartServiceImpl implements CartService {
 
             redisTemplate.expire(key, CART_TTL_DAYS, TimeUnit.DAYS);
 
-            return calculateCartResponse(redisItems, hasGuestCart);
+            return calculateCartResponse(redisItems, hasGuestCart, key);
 
         } catch (BusinessException be) {
             throw be;
@@ -244,7 +262,7 @@ public class CartServiceImpl implements CartService {
         }
     }
 
-    private CartListResponse calculateCartResponse(Map<Object, Object> redisItems, boolean hasGuestCart) {
+    private CartListResponse calculateCartResponse(Map<Object, Object> redisItems, boolean hasGuestCart, String redisKey) {
         List<Long> bookIds = new ArrayList<>();
         Map<Long, Integer> quantityMap = new HashMap<>();
 
@@ -255,7 +273,7 @@ public class CartServiceImpl implements CartService {
                 bookIds.add(bookId);
                 quantityMap.put(bookId, quantity);
             } catch (NumberFormatException e) {
-                // Invalid data ignored
+                // 파싱 에러 무시
             }
         }
 
@@ -263,16 +281,21 @@ public class CartServiceImpl implements CartService {
             return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
         }
 
-        List<GetBookResponse> bookInfos;
-        try {
-            bookInfos = bookFeignClient.getBooksBulk(bookIds);
-        } catch (Exception e) {
-            log.error("Book service call failed", e);
-            throw new BusinessException(ErrorCode.BOOK_SERVICE_ERROR);
-        }
+        List<GetBookResponse> bookInfos = bookFeignClient.getBooksBulk(bookIds);
 
-        if (bookInfos == null) {
-            bookInfos = Collections.emptyList();
+        if (bookInfos == null) bookInfos = Collections.emptyList();
+
+        Set<Long> foundBookIds = bookInfos.stream()
+                .map(GetBookResponse::bookId)
+                .collect(Collectors.toSet());
+
+        List<Long> ghostItemIds = bookIds.stream()
+                .filter(id -> !foundBookIds.contains(id))
+                .toList();
+
+        if (!ghostItemIds.isEmpty()) {
+            log.warn("유효하지 않은 상품 발견(삭제됨): {}. 장바구니에서 제거합니다.", ghostItemIds);
+            redisTemplate.opsForHash().delete(redisKey, ghostItemIds.toArray());
         }
 
         List<CartDetailResponse> cartDetails = new ArrayList<>();

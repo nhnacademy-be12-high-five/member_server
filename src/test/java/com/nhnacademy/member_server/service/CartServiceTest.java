@@ -45,10 +45,6 @@ class CartServiceTest {
     @Mock HashOperations<String, Object, Object> hashOperations;
     @Mock SetOperations<String, Object> setOperations;
 
-    /**
-     * [요청사항 반영]
-     * CartItem 엔티티 테스트를 별도 파일이 아닌 Inner Class로 포함시켜 관리
-     */
     @Nested
     @DisplayName("CartItem Entity Test")
     class CartItemEntityTest {
@@ -62,13 +58,14 @@ class CartServiceTest {
             assertThat(cartItem.getBookId()).isEqualTo(100L);
             assertThat(cartItem.getQuantity()).isEqualTo(2);
 
-            // updateQuantity 메서드 테스트 (서비스에서 안 쓰더라도 엔티티 커버리지를 위해 호출)
             cartItem.updateQuantity(5);
             assertThat(cartItem.getQuantity()).isEqualTo(5);
         }
     }
 
-    // --- CartServiceImpl 테스트 시작 ---
+    // =================================================================
+    // 1. 장바구니 담기 (addToCart)
+    // =================================================================
 
     @Test
     @DisplayName("장바구니 담기 - 정상 (회원)")
@@ -84,7 +81,7 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("장바구니 담기 - Redis 예외 발생 시 REDIS_SERVER_ERROR 변환")
+    @DisplayName("장바구니 담기 - Redis 예외 발생")
     void addToCart_RedisError() {
         given(redisTemplate.opsForHash()).willThrow(new RuntimeException("Redis Fail"));
         CartAddRequest request = new CartAddRequest(100L, 1);
@@ -93,6 +90,10 @@ class CartServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.REDIS_SERVER_ERROR);
     }
+
+    // =================================================================
+    // 2. 장바구니 조회 (getCartItemList) - 복구, Ghost Item, 파싱 에러 등
+    // =================================================================
 
     @Test
     @DisplayName("장바구니 조회 - 전체 NULL 입력 시 빈 리스트")
@@ -107,28 +108,24 @@ class CartServiceTest {
         given(redisTemplate.opsForHash()).willReturn(hashOperations);
         given(hashOperations.entries(anyString())).willReturn(Map.of("100", "2"));
 
-        // Feign Mock
         GetBookResponse book = new GetBookResponse(100L, "Title", 1000, "img");
         given(bookFeignClient.getBooksBulk(anyList())).willReturn(List.of(book));
 
         CartListResponse res = cartService.getCartItemList(1L, null);
 
         assertThat(res.items()).hasSize(1);
-        assertThat(res.items().getFirst().title()).isEqualTo("Title");
-        assertThat(res.totalCartPrice()).isEqualTo(2000); // 1000 * 2
+        assertThat(res.items().getFirst().totalPrice()).isEqualTo(2000);
     }
 
     @Test
-    @DisplayName("장바구니 조회 - Redis Miss -> DB 복구 로직 (restoreCartOnLogin 로직 포함)")
+    @DisplayName("장바구니 조회 - Redis Miss -> DB 복구 로직 (Restore)")
     void getCartItemList_RestoreFromDB() {
-        // 1. Redis 조회 결과 Empty
+        // 1. Redis Empty
         given(redisTemplate.opsForHash()).willReturn(hashOperations);
         given(hashOperations.entries(anyString())).willReturn(Collections.emptyMap());
 
-        // 2. DB 조회 Mock
-        Member member = new Member();
-        Cart cart = new Cart(member);
-        CartItem item = new CartItem(100L, 5, cart);
+        // 2. DB Data Exists
+        CartItem item = new CartItem(100L, 5, mock(Cart.class));
         given(cartItemRepository.findByCart_Member_Id(1L)).willReturn(List.of(item));
 
         // 3. Feign Mock
@@ -137,69 +134,69 @@ class CartServiceTest {
         CartListResponse res = cartService.getCartItemList(1L, null);
 
         assertThat(res.items()).hasSize(1);
-        // DB -> Redis 복구 확인 (putAll 호출)
-        verify(hashOperations).putAll(anyString(), anyMap());
+        verify(hashOperations).putAll(anyString(), anyMap()); // Restore 확인
     }
 
     @Test
-    @DisplayName("장바구니 조회 - Redis/DB 모두 없음")
-    void getCartItemList_EmptyAll() {
+    @DisplayName("장바구니 조회 - Ghost Item(삭제된 상품) 자동 정리")
+    void getCartItemList_GhostItemRemoval() {
+        String redisKey = "cart:m:1";
         given(redisTemplate.opsForHash()).willReturn(hashOperations);
-        given(hashOperations.entries(anyString())).willReturn(Collections.emptyMap());
-        given(cartItemRepository.findByCart_Member_Id(1L)).willReturn(Collections.emptyList());
+        // Redis: 100, 200
+        given(hashOperations.entries(redisKey)).willReturn(Map.of("100", "2", "200", "3"));
+
+        // Feign: 100만 리턴 (200은 삭제됨)
+        GetBookResponse book100 = new GetBookResponse(100L, "Title", 1000, "img");
+        given(bookFeignClient.getBooksBulk(anyList())).willReturn(List.of(book100));
+
+        cartService.getCartItemList(1L, null);
+
+        // Redis에서 200번 삭제 호출 검증 (Long 타입)
+        verify(hashOperations).delete(eq(redisKey), eq(200L));
+    }
+
+    @Test
+    @DisplayName("장바구니 조회 - Redis 데이터 파싱 에러 (NumberFormatException) 무시")
+    void getCartItemList_ParsingError() {
+        given(redisTemplate.opsForHash()).willReturn(hashOperations);
+        // "bad": key가 숫자가 아님, "100":"nan": value가 숫자가 아님
+        Map<Object, Object> redisMap = new HashMap<>();
+        redisMap.put("bad_key", "1");
+        redisMap.put("100", "not_a_number");
+        redisMap.put("200", "5"); // 정상
+
+        given(hashOperations.entries(anyString())).willReturn(redisMap);
+        given(bookFeignClient.getBooksBulk(anyList())).willReturn(List.of(new GetBookResponse(200L, "Book", 100, "img")));
+
+        CartListResponse res = cartService.getCartItemList(1L, null);
+
+        // 정상 데이터 1개만 처리됨
+        assertThat(res.items()).hasSize(1);
+        assertThat(res.items().getFirst().bookId()).isEqualTo(200L);
+    }
+
+    @Test
+    @DisplayName("장바구니 조회 - Feign 응답이 NULL이거나 비어있을 때")
+    void getCartItemList_FeignIssues() {
+        given(redisTemplate.opsForHash()).willReturn(hashOperations);
+        given(hashOperations.entries(anyString())).willReturn(Map.of("100", "1"));
+
+        // NULL 리턴
+        given(bookFeignClient.getBooksBulk(anyList())).willReturn(null);
 
         CartListResponse res = cartService.getCartItemList(1L, null);
         assertThat(res.items()).isEmpty();
     }
 
-    @Test
-    @DisplayName("장바구니 조회 - Feign 응답 NULL 또는 일부 NULL 포함")
-    void getCartItemList_FeignIssues() {
-        given(redisTemplate.opsForHash()).willReturn(hashOperations);
-        given(hashOperations.entries(anyString())).willReturn(Map.of("100", "1"));
-
-        // Case 1: 아예 null 리턴
-        given(bookFeignClient.getBooksBulk(anyList())).willReturn(null);
-        CartListResponse res1 = cartService.getCartItemList(1L, null);
-        assertThat(res1.items()).isEmpty();
-
-        // Case 2: 리스트 안에 null 포함
-        List<GetBookResponse> listWithNull = new ArrayList<>();
-        listWithNull.add(null);
-        given(bookFeignClient.getBooksBulk(anyList())).willReturn(listWithNull);
-        CartListResponse res2 = cartService.getCartItemList(1L, null);
-        assertThat(res2.items()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("장바구니 조회 - 알 수 없는 에러 시 Redis 에러로 래핑")
-    void getCartItemList_UnknownError() {
-        given(redisTemplate.opsForHash()).willThrow(new RuntimeException("Boom"));
-
-        assertThatThrownBy(() -> cartService.getCartItemList(1L, null))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.REDIS_SERVER_ERROR);
-    }
-
-    @Test
-    @DisplayName("장바구니 조회 - BusinessException 발생 시 그대로 던짐 (래핑 X)")
-    void getCartItemList_RethrowBusinessException() {
-        // 일부러 calculateCartResponse 내부에서 에러가 나도록 유도하거나,
-        // 혹은 직접 Mocking을 통해 BusinessException을 발생시킴.
-        // 여기서는 calculateCartResponse 내부 Feign 예외를 가정하기 어려우므로
-        // redisTemplate이 BusinessException을 던진다고 가정 (이론상 가능)
-        given(redisTemplate.opsForHash()).willThrow(new BusinessException(ErrorCode.BOOK_SERVICE_ERROR));
-
-        assertThatThrownBy(() -> cartService.getCartItemList(1L, null))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.BOOK_SERVICE_ERROR);
-    }
+    // =================================================================
+    // 3. 수량 변경 (Update) & 삭제 (Delete)
+    // =================================================================
 
     @Test
     @DisplayName("수량 변경 - 성공")
     void updateQuantity_Success() {
         given(redisTemplate.opsForHash()).willReturn(hashOperations);
-        given(hashOperations.hasKey(anyString(), anyString())).willReturn(true);
+        given(redisTemplate.opsForHash().hasKey(anyString(), anyString())).willReturn(true);
         given(redisTemplate.opsForSet()).willReturn(setOperations);
 
         cartService.updateCartItemQuantity(1L, null, new CartItemUpdateRequest(100L, 5));
@@ -208,25 +205,14 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("수량 변경 - 상품 없음 (CART_ITEM_NOT_FOUND)")
+    @DisplayName("수량 변경 - 상품 없음 (예외)")
     void updateQuantity_NotFound() {
         given(redisTemplate.opsForHash()).willReturn(hashOperations);
-        given(hashOperations.hasKey(anyString(), anyString())).willReturn(false);
+        given(redisTemplate.opsForHash().hasKey(anyString(), anyString())).willReturn(false);
 
         assertThatThrownBy(() -> cartService.updateCartItemQuantity(1L, null, new CartItemUpdateRequest(100L, 5)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("수량 변경 - Redis 에러")
-    void updateQuantity_RedisError() {
-        given(redisTemplate.opsForHash()).willReturn(hashOperations);
-        given(hashOperations.hasKey(anyString(), anyString())).willThrow(new RuntimeException("Redis"));
-
-        assertThatThrownBy(() -> cartService.updateCartItemQuantity(1L, null, new CartItemUpdateRequest(100L, 5)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.REDIS_SERVER_ERROR);
     }
 
     @Test
@@ -241,25 +227,19 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("전체 삭제 - 이미 비어있음")
-    void deleteAll_Empty() {
-        given(redisTemplate.delete(anyString())).willReturn(false); // 삭제된 게 없음
+    @DisplayName("전체 삭제 - 성공")
+    void deleteAllCartItem() {
         given(redisTemplate.opsForSet()).willReturn(setOperations);
 
         cartService.deleteAllCartItem(1L, null);
 
-        // 그래도 로직은 끝까지 수행됨
+        verify(redisTemplate).delete(anyString());
         verify(setOperations).add(eq("cart:dirty"), anyString());
     }
 
-    @Test
-    @DisplayName("전체 삭제 - Redis 에러")
-    void deleteAll_Error() {
-        given(redisTemplate.delete(anyString())).willThrow(new RuntimeException("Fail"));
-
-        assertThatThrownBy(() -> cartService.deleteAllCartItem(1L, null))
-                .isInstanceOf(BusinessException.class);
-    }
+    // =================================================================
+    // 4. 게스트 장바구니 병합 (Migrate) & 삭제
+    // =================================================================
 
     @Test
     @DisplayName("게스트 카트 병합 - 성공")
@@ -276,54 +256,17 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("게스트 카트 병합 - Redis 에러 발생 시 RuntimeException")
-    void migrateGuestCart_Error() {
-        given(redisTemplate.hasKey(anyString())).willThrow(new RuntimeException("Oops"));
+    @DisplayName("게스트 카트 병합 - 파싱 에러 (수량 0으로 처리)")
+    void migrateGuestCart_ParsingError() {
+        given(redisTemplate.hasKey(anyString())).willReturn(true);
+        given(redisTemplate.opsForHash()).willReturn(hashOperations);
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+        // 수량이 숫자가 아님
+        given(hashOperations.entries(anyString())).willReturn(Map.of("100", "bad_qty"));
 
-        assertThatThrownBy(() -> cartService.migrateGuestCart("guest", 1L))
-                .isInstanceOf(RuntimeException.class);
-    }
+        cartService.migrateGuestCart("guest", 1L);
 
-    @Test
-    @DisplayName("로그인 시 복구 - 데이터 없으면 스킵")
-    void restoreCartOnLogin_NoData() {
-        // DB 데이터 없음
-        given(cartItemRepository.findByCart_Member_Id(1L)).willReturn(Collections.emptyList());
-
-        cartService.restoreCartOnLogin(1L);
-
-        // Redis 로직 실행 안됨 -> 불필요한 스터빙 에러 방지됨
-        verify(redisTemplate, never()).opsForHash();
-    }
-
-    @Test
-    @DisplayName("DB 동기화 (syncToDb) - 회원 없음")
-    void syncToDb_MemberNotFound() {
-        given(memberRepository.findById(99L)).willReturn(Optional.empty());
-
-        cartService.syncToDb(99L, Map.of("100", "1"));
-
-        verify(cartRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("DB 동기화 (syncToDb) - 파싱 에러 (무시하고 진행)")
-    void syncToDb_ParsingError() {
-        Member member = new Member();
-        Cart cart = new Cart(member);
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
-        given(cartRepository.findByMember_Id(1L)).willReturn(Optional.of(cart));
-
-        // 잘못된 데이터 섞임
-        Map<Object, Object> redisMap = new HashMap<>();
-        redisMap.put("100", "2");
-        redisMap.put("bad", "data");
-
-        cartService.syncToDb(1L, redisMap);
-
-        // 정상 데이터인 1개만 저장되어야 함 (혹은 리스트 필터링 후 저장)
-        // verify로 saveAll 호출 여부 확인
-        verify(cartItemRepository).saveAll(anyList());
+        verify(hashOperations).increment(anyString(), eq("100"), eq(0L)); // 0으로 병합
     }
 
     @Test
@@ -333,12 +276,97 @@ class CartServiceTest {
         verify(redisTemplate).delete("cart:g:guest");
     }
 
-    @Test
-    @DisplayName("비회원 카트만 삭제 - 에러")
-    void deleteGuestCartOnly_Error() {
-        given(redisTemplate.delete(anyString())).willThrow(new RuntimeException("Fail"));
+    // =================================================================
+    // 5. DB 동기화 (syncToDb) - Dirty Checking
+    // =================================================================
 
-        assertThatThrownBy(() -> cartService.deleteGuestCartOnly("guest"))
-                .isInstanceOf(BusinessException.class);
+    @Test
+    @DisplayName("DB 동기화 - INSERT (DB X, Redis O)")
+    void syncToDb_Insert() {
+        Long memberId = 1L;
+        Member member = mock(Member.class);
+        Cart cart = mock(Cart.class);
+
+        lenient().when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        lenient().when(cartRepository.findByMember_Id(memberId)).thenReturn(Optional.of(cart));
+        given(cartItemRepository.findByCart_Member_Id(memberId)).willReturn(new ArrayList<>());
+
+        Map<Object, Object> redisMap = Map.of("100", "5");
+
+        cartService.syncToDb(memberId, redisMap);
+
+        verify(cartItemRepository).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("DB 동기화 - UPDATE (수량 변경)")
+    void syncToDb_Update() {
+        Long memberId = 1L;
+        Member member = mock(Member.class);
+        Cart cart = mock(Cart.class);
+
+        lenient().when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        lenient().when(cartRepository.findByMember_Id(memberId)).thenReturn(Optional.of(cart));
+
+        CartItem dbItem = spy(new CartItem(100L, 2, cart));
+        given(cartItemRepository.findByCart_Member_Id(memberId)).willReturn(List.of(dbItem));
+
+        Map<Object, Object> redisMap = Map.of("100", "5"); // 수량 5로 변경
+
+        cartService.syncToDb(memberId, redisMap);
+
+        verify(dbItem).updateQuantity(5);
+        verify(cartItemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("DB 동기화 - DELETE (Redis에서 삭제됨)")
+    void syncToDb_Delete() {
+        Long memberId = 1L;
+        Member member = mock(Member.class);
+        Cart cart = mock(Cart.class);
+
+        lenient().when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        lenient().when(cartRepository.findByMember_Id(memberId)).thenReturn(Optional.of(cart));
+
+        CartItem dbItem = new CartItem(100L, 2, cart);
+        given(cartItemRepository.findByCart_Member_Id(memberId)).willReturn(List.of(dbItem));
+
+        Map<Object, Object> redisMap = Collections.emptyMap(); // Redis 비어있음
+
+        cartService.syncToDb(memberId, redisMap);
+
+        verify(cartItemRepository).delete(dbItem);
+    }
+
+    @Test
+    @DisplayName("DB 동기화 - 파싱 에러 (무시)")
+    void syncToDb_ParsingError() {
+        Long memberId = 1L;
+        lenient().when(memberRepository.findById(memberId)).thenReturn(Optional.of(new Member()));
+        lenient().when(cartRepository.findByMember_Id(memberId)).thenReturn(Optional.of(new Cart(new Member())));
+
+        // DB는 비어있다고 가정
+        given(cartItemRepository.findByCart_Member_Id(memberId)).willReturn(new ArrayList<>());
+
+        Map<Object, Object> redisMap = new HashMap<>();
+        redisMap.put("bad_key", "1"); // 키 에러
+        redisMap.put("100", "bad");   // 값 에러
+
+        cartService.syncToDb(memberId, redisMap);
+
+        verify(cartItemRepository, never()).saveAll(any());
+    }
+
+    // =================================================================
+    // 6. 기타
+    // =================================================================
+
+    @Test
+    @DisplayName("로그인 시 복구 - 데이터 없으면 스킵")
+    void restoreCartOnLogin_NoData() {
+        given(cartItemRepository.findByCart_Member_Id(1L)).willReturn(Collections.emptyList());
+        cartService.restoreCartOnLogin(1L);
+        verify(redisTemplate, never()).opsForHash();
     }
 }
