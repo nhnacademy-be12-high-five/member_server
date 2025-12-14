@@ -26,7 +26,7 @@ public class CartController{
     private final CartService cartService;
 
     @PostMapping("/items")
-    public ResponseEntity<CartAddResponse> addItemToCart(@RequestBody CartAddRequest request,
+    public ResponseEntity<CartAddResponse> addItemToCart(@RequestBody @Valid CartAddRequest request,
                                                          @CookieValue(value = "guestCookie", required = false) String guestId,
                                                          @RequestHeader(name = "X-USER-ID", required = false) Long XId,
                                                          HttpServletResponse httpResponse) {
@@ -98,10 +98,10 @@ public class CartController{
     public ResponseEntity<Void> ignoreGuestCart(@CookieValue(value = "guestCookie", required = false) String guestId,
                                                 HttpServletResponse response) {
         if (guestId != null) {
-            // 1. Redis 비회원 키 삭제
+            // Redis 비회원 키 삭제
             cartService.deleteGuestCartOnly(guestId);
 
-            // 2. 쿠키 삭제
+            // 쿠키 삭제
             CookieUtils.deleteCookie(response, "guestCookie");
         }
         return ResponseEntity.noContent().build();
