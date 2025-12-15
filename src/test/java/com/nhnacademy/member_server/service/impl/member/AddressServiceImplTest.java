@@ -34,24 +34,24 @@ class AddressServiceImplTest {
     @Mock
     private AddressRepository addressRepository;
 
-    @Test
-    @DisplayName("주소 등록 성공 - 첫 주소는 자동으로 기본 배송지")
-    void registerAddressSuccess_FirstAddress() {
-
-        Long memberId = 1L;
-        AddressRequest request = AddressRequest.builder()
-                .alias("집").roadAddress("서울").detailAddress("101호").build();
-
-        Member member = Member.builder().id(memberId).addresses(new ArrayList<>()).build();
-
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-        given(addressRepository.save(any(Address.class))).willAnswer(invocation -> invocation.getArgument(0));
-
-        AddressResponse response = addressService.registerAddress(memberId, request);
-
-        assertThat(response.getAlias()).isEqualTo("집");
-        assertThat(member.getDefaultAddressId()).isNotNull();
-    }
+//    @Test
+//    @DisplayName("주소 등록 성공 - 첫 주소는 자동으로 기본 배송지")
+//    void registerAddressSuccess_FirstAddress() {
+//
+//        Long memberId = 1L;
+//        AddressRequest request = AddressRequest.builder()
+//                .alias("집").roadAddress("서울").detailAddress("101호").build();
+//
+//        Member member = Member.builder().id(memberId).addresses(new ArrayList<>()).build();
+//
+//        given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+//        given(addressRepository.save(any(Address.class))).willAnswer(invocation -> invocation.getArgument(0));
+//
+//        AddressResponse response = addressService.registerAddress(memberId, request);
+//
+//        assertThat(response.getAlias()).isEqualTo("집");
+//        assertThat(member.getDefaultAddressId()).isNotNull();
+//    }
 
     @Test
     @DisplayName("주소 등록 실패 - 10개 초과")

@@ -165,7 +165,17 @@ public class CartServiceImpl implements CartService {
                 String bookId = (String) entry.getKey();
                 int quantity = parseQuantity(entry.getValue());
                 if (quantity <= 0) continue;
-                redisTemplate.opsForHash().increment(memberKey, bookId, quantity);
+
+                Object currentVal = redisTemplate.opsForHash().get(memberKey, bookId);
+
+                int currentQty = currentVal != null ? parseQuantity(currentVal) : 0;
+                int newQty = Math.min(currentQty + quantity, MAX_CART_QUANTITY);
+                int actualIncrement = newQty - currentQty;
+
+                if (actualIncrement > 0) {
+                    redisTemplate.opsForHash().increment(memberKey, bookId, actualIncrement);
+                }
+
             }
 
             redisTemplate.delete(guestKey);
