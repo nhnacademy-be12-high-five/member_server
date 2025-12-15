@@ -150,8 +150,8 @@ class MemberControllerTest {
         List<Long> memberIds = List.of(1L, 2L);
 
         List<SimpleMemberResponse> responses = List.of(
-                SimpleMemberResponse.builder().memberId(1L).loginId("user1").build(),
-                SimpleMemberResponse.builder().memberId(2L).loginId("user2").build()
+                SimpleMemberResponse.builder().memberId(1L).name("user1").build(),
+                SimpleMemberResponse.builder().memberId(2L).name("user2").build()
         );
 
         given(memberService.getMembersInfo(anyList())).willReturn(responses);
@@ -162,6 +162,6 @@ class MemberControllerTest {
                         .content(objectMapper.writeValueAsString(memberIds)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size()").value(2))
-                .andExpect(jsonPath("$[0].loginId").value("user1"));
+                .andExpect(jsonPath("$[0].name").value("user1"));
     }
 }

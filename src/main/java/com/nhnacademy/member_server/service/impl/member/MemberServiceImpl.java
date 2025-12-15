@@ -100,7 +100,7 @@ public class MemberServiceImpl implements MemberService {
         return results.stream()
                 .map(row -> SimpleMemberResponse.builder()
                         .memberId((Long) row[0])
-                        .loginId((String) row[1])
+                        .name((String) row[2])
                         .build())
                 .toList();
     }

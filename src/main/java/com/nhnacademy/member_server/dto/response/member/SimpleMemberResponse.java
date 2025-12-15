@@ -11,5 +11,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor  
 public class SimpleMemberResponse {  
     private Long memberId;  
-    private String loginId;  
+    private String name;
 }
