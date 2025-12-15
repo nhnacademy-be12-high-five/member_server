@@ -64,7 +64,7 @@ public class MemberServiceImpl implements MemberService {
         if(memberUpdateRequest.getEmail() != null) member.setEmail(memberUpdateRequest.getEmail());
         if(memberUpdateRequest.getPhone() != null) member.setPhone(memberUpdateRequest.getPhone());
         if(memberUpdateRequest.getGender() != null) member.setGender(memberUpdateRequest.getGender());
-
+        if(memberUpdateRequest.getBirthDate() != null) member.setBirthDate(memberUpdateRequest.getBirthDate());
 
         return MemberResponse.from(member);
     }
