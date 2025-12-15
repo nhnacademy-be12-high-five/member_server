@@ -55,7 +55,7 @@ class CartControllerTest {
     void addItemToCart_Member() throws Exception {
         CartAddRequest request = new CartAddRequest(1L, 1);
         CartAddResponse response = new CartAddResponse("key", 1L, 1);
-        given(cartService.addToCart(any(), eq(10L), any())).willReturn(response);
+        given(cartService.addToCart(any(), eq(1L), any())).willReturn(response);
 
         mockMvc.perform(post("/api/cart/items")
                         .header("X-USER-ID", 1L)

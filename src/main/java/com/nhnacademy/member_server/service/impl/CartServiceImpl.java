@@ -36,6 +36,7 @@ public class CartServiceImpl implements CartService {
     private final CartItemRepository cartItemRepository;
     private final CartRepository cartRepository;
     private final MemberRepository memberRepository;
+    private static final int MAX_CART_QUANTITY = 100;
 
     private static final String DIRTY_KEY = "cart:dirty";
     private static final long CART_TTL_DAYS = 7L;
@@ -49,7 +50,11 @@ public class CartServiceImpl implements CartService {
     @Override
     public void restoreCartOnLogin(Long memberId) {
         String key = getRedisKey(memberId, null);
-        loadFromDbAndRestoreToRedis(memberId, key);
+        try {
+            loadFromDbAndRestoreToRedis(memberId, key);
+        } catch (Exception e) {
+            log.error("로그인 시 장바구니 복구 실패 (MemberId: {})", memberId, e);
+        }
     }
 
     @Override
@@ -59,16 +64,26 @@ public class CartServiceImpl implements CartService {
         String bookIdStr = String.valueOf(request.bookId());
 
         try {
+            Object currentVal = redisTemplate.opsForHash().get(key, bookIdStr);
+            int currentQuantity = currentVal != null ? Integer.parseInt(String.valueOf(currentVal)) : 0;
+
+            if (currentQuantity + request.quantity() > MAX_CART_QUANTITY) {
+                throw new BusinessException(ErrorCode.INVALID_QUANTITY);
+            }
+
             redisTemplate.opsForHash().increment(key, bookIdStr, request.quantity());
             redisTemplate.expire(key, CART_TTL_DAYS, TimeUnit.DAYS);
 
             if (memberId != null) {
                 redisTemplate.opsForSet().add(DIRTY_KEY, String.valueOf(memberId));
             }
+        } catch (BusinessException be) {
+            throw be;
         } catch (Exception e) {
             log.error("Redis error during addToCart: {}", e.getMessage());
             throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
         }
+
         return new CartAddResponse(key, request.bookId(), request.quantity());
     }
 
@@ -149,6 +164,7 @@ public class CartServiceImpl implements CartService {
             for (Map.Entry<Object, Object> entry : guestItems.entrySet()) {
                 String bookId = (String) entry.getKey();
                 int quantity = parseQuantity(entry.getValue());
+                if (quantity <= 0) continue;
                 redisTemplate.opsForHash().increment(memberKey, bookId, quantity);
             }
 
@@ -156,9 +172,11 @@ public class CartServiceImpl implements CartService {
             redisTemplate.opsForSet().add(DIRTY_KEY, String.valueOf(memberId));
             redisTemplate.expire(memberKey, CART_TTL_DAYS, TimeUnit.DAYS);
 
+        } catch (BusinessException be) {
+            throw be;
         } catch (Exception e) {
-            log.error("Error during guest cart migration", e);
-            throw new RuntimeException(e);
+            log.error("Redis error during guest cart migration", e);
+            throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
         }
     }
 
@@ -179,7 +197,7 @@ public class CartServiceImpl implements CartService {
                     int quantity = Integer.parseInt(String.valueOf(entry.getValue()));
                     redisMap.put(bookId, quantity);
                 } catch (NumberFormatException e) {
-                    log.warn("스킵 됨 MemberId: {}, Key: {}, Value: {}", memberId, entry.getKey(), entry.getValue());
+                    log.warn("Skipped MemberId: {}, Key: {}, Value: {}", memberId, entry.getKey(), entry.getValue());
                 }
             }
         }
@@ -189,9 +207,9 @@ public class CartServiceImpl implements CartService {
 
         List<CartItem> dbItems = cartItemRepository.findByCart_Member_Id(memberId);
 
-        Iterator<CartItem> iterator = dbItems.iterator();
-        while (iterator.hasNext()) {
-            CartItem dbItem = iterator.next();
+        List<CartItem> toDelete = new ArrayList<>();
+
+        for (CartItem dbItem : dbItems) {
             Long bookId = dbItem.getBookId();
 
             if (redisMap.containsKey(bookId)) {
@@ -201,7 +219,10 @@ public class CartServiceImpl implements CartService {
                 }
                 redisMap.remove(bookId);
             } else {
-                cartItemRepository.delete(dbItem);
+                toDelete.add(dbItem);
+            }
+            if (!toDelete.isEmpty()) {
+                cartItemRepository.deleteAllInBatch(toDelete);
             }
         }
 
@@ -269,7 +290,8 @@ public class CartServiceImpl implements CartService {
         for (Map.Entry<Object, Object> entry : redisItems.entrySet()) {
             try {
                 Long bookId = Long.valueOf(String.valueOf(entry.getKey()));
-                int quantity = Integer.parseInt(String.valueOf(entry.getValue()));
+                int quantity = parseQuantity(entry.getValue());
+                if (quantity <= 0) continue;
                 bookIds.add(bookId);
                 quantityMap.put(bookId, quantity);
             } catch (NumberFormatException e) {
@@ -337,6 +359,7 @@ public class CartServiceImpl implements CartService {
         try {
             return Integer.parseInt(String.valueOf(value));
         } catch (NumberFormatException e) {
+            log.warn("Failed to parse quantity: {}", value);
             return 0;
         }
     }
