@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+
 @Builder
 @Getter
 @NoArgsConstructor
@@ -20,4 +23,5 @@ public class MemberUpdateRequest {
 
     private Gender gender;
 
+    private LocalDate birthDate;
 }
