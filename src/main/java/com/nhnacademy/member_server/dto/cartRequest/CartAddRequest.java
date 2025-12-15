@@ -11,6 +11,6 @@ public record CartAddRequest(
         Long bookId,
 
         @Min(value = 1, message = "수량은 최소 1개 이상이어야 합니다.")
-        @Max(value = 100, message = "한 번에 최대 100권까지만 담을 수 있습니다.")
+        @Max(value = 100, message = "한 번에 최대 100권까지만 담을 수 있습니다.") // 정책에 따라 추가
         int quantity
 ) {}
