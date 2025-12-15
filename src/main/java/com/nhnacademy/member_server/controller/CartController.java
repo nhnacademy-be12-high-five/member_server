@@ -45,8 +45,7 @@ public class CartController{
     // 장바구니가 없으면 그냥 빈 리스트 반환
     @GetMapping
     public ResponseEntity<CartListResponse> getCartItems(@CookieValue(value = "guestCookie", required = false) String guestId,
-                                                         @RequestHeader(name = "X-USER-ID", required = false) Long memberId,
-                                                         Pageable pageable){
+                                                         @RequestHeader(name = "X-USER-ID", required = false) Long memberId){
         CartListResponse cartList = cartService.getCartItemList(memberId, guestId);
 
        return ResponseEntity.ok(cartList);

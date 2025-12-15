@@ -63,6 +63,7 @@ class CartServiceTest {
         }
     }
 
+
     // =================================================================
     // 1. 장바구니 담기 (addToCart)
     // =================================================================
@@ -89,6 +90,21 @@ class CartServiceTest {
         assertThatThrownBy(() -> cartService.addToCart(request, 1L, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.REDIS_SERVER_ERROR);
+    }
+
+    @Test
+    @DisplayName("장바구니 담기 - 수량 제한 초과 (100개)")
+    void addToCart_QuantityExceedsMax() {
+        given(redisTemplate.opsForHash()).willReturn(hashOperations);
+
+        given(hashOperations.get(anyString(), anyString())).willReturn("90");
+
+        CartAddRequest request = new CartAddRequest(100L, 11);
+
+        assertThatThrownBy(() -> cartService.addToCart(request, 1L, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_QUANTITY);
     }
 
     // =================================================================
@@ -256,17 +272,17 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("게스트 카트 병합 - 파싱 에러 (수량 0으로 처리)")
+    @DisplayName("게스트 카트 병합 - 파싱 에러 (수량 0 이하이므로 스킵)")
     void migrateGuestCart_ParsingError() {
         given(redisTemplate.hasKey(anyString())).willReturn(true);
         given(redisTemplate.opsForHash()).willReturn(hashOperations);
         given(redisTemplate.opsForSet()).willReturn(setOperations);
-        // 수량이 숫자가 아님
+
         given(hashOperations.entries(anyString())).willReturn(Map.of("100", "bad_qty"));
 
         cartService.migrateGuestCart("guest", 1L);
 
-        verify(hashOperations).increment(anyString(), eq("100"), eq(0L)); // 0으로 병합
+        verify(hashOperations, never()).increment(anyString(), anyString(), anyLong());
     }
 
     @Test
@@ -287,8 +303,8 @@ class CartServiceTest {
         Member member = mock(Member.class);
         Cart cart = mock(Cart.class);
 
-        lenient().when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        lenient().when(cartRepository.findByMember_Id(memberId)).thenReturn(Optional.of(cart));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(cartRepository.findByMember_Id(memberId)).thenReturn(Optional.of(cart));
         given(cartItemRepository.findByCart_Member_Id(memberId)).willReturn(new ArrayList<>());
 
         Map<Object, Object> redisMap = Map.of("100", "5");
@@ -320,7 +336,7 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("DB 동기화 - DELETE (Redis에서 삭제됨)")
+    @DisplayName("DB 동기화 - DELETE (Redis에서 삭제된 경우)")
     void syncToDb_Delete() {
         Long memberId = 1L;
         Member member = mock(Member.class);
@@ -336,7 +352,26 @@ class CartServiceTest {
 
         cartService.syncToDb(memberId, redisMap);
 
-        verify(cartItemRepository).delete(dbItem);
+        verify(cartItemRepository).deleteAllInBatch(anyList());
+        verify(cartItemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("DB 동기화 - Repository 예외 발생 시 롤백")
+    void syncToDb_RepositoryException() {
+        Long memberId = 1L;
+        Member member = mock(Member.class);
+        Cart cart = mock(Cart.class);
+
+        lenient().when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        lenient().when(cartRepository.findByMember_Id(memberId)).thenReturn(Optional.of(cart));
+        given(cartItemRepository.findByCart_Member_Id(memberId)).willReturn(new ArrayList<>());
+        given(cartItemRepository.saveAll(anyList())).willThrow(new RuntimeException("DB Error"));
+
+        Map<Object, Object> redisMap = Map.of("100", "5");
+
+        assertThatThrownBy(() -> cartService.syncToDb(memberId, redisMap))
+                .isInstanceOf(RuntimeException.class);
     }
 
     @Test

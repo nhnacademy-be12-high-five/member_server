@@ -65,7 +65,7 @@ class CartDBSyncServiceTest {
     void syncRedisToDb_Exception() {
         // given
         given(setOperations.pop(eq("cart:dirty"), anyLong())).willReturn(List.of("1"));
-
+        given(hashOperations.entries("cart:m:1")).willReturn(Map.of("100", "2"));
         // Service 메서드 호출 시 예외 발생
         doThrow(new RuntimeException("DB Error")).when(cartService).syncToDb(anyLong(), anyMap());
 
