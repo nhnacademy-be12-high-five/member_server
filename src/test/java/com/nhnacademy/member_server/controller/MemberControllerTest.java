@@ -74,6 +74,7 @@ class MemberControllerTest {
         Long memberId = 1L;
 
         MemberUpdateRequest request = new MemberUpdateRequest(
+                "홍길동",
                 "new@email.com",
                 "010-9999-9999",
                 Gender.FEMALE,

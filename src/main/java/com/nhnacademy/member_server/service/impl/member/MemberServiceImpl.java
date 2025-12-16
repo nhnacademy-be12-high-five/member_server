@@ -8,7 +8,6 @@ import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.entity.member.Status;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
-import com.nhnacademy.member_server.repository.AddressRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ import java.util.List;
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
-    private final AddressRepository addressRepository;
 
     @Override
     @Transactional
@@ -48,23 +46,49 @@ public class MemberServiceImpl implements MemberService {
     public MemberResponse updateMember(Long memberId, MemberUpdateRequest memberUpdateRequest) {
         Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
 
-        if(memberUpdateRequest.getEmail() != null &&
-                !memberUpdateRequest.getEmail().equals(member.getEmail()) &&
-                memberRepository.existsByEmail(memberUpdateRequest.getEmail())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        if (memberUpdateRequest.getName() != null && !memberUpdateRequest.getName().isBlank()) {
+            member.setName(memberUpdateRequest.getName());
         }
 
-
-        if(memberUpdateRequest.getPhone() != null &&
-                !memberUpdateRequest.getPhone().equals(member.getPhone()) &&
-                memberRepository.existsByPhone(memberUpdateRequest.getPhone())) {
-            throw new IllegalArgumentException("이미 사용 중인 전화번호입니다.");
+        if (memberUpdateRequest.getBirthDate() != null) {
+            if (member.isProfileComplete()) {
+                if (!member.getBirthDate().equals(memberUpdateRequest.getBirthDate())) {
+                    throw new IllegalArgumentException("생년월일은 가입 완료 후 변경할 수 없습니다.");
+                }
+            }
+            member.setBirthDate(memberUpdateRequest.getBirthDate());
         }
 
-        if(memberUpdateRequest.getEmail() != null) member.setEmail(memberUpdateRequest.getEmail());
-        if(memberUpdateRequest.getPhone() != null) member.setPhone(memberUpdateRequest.getPhone());
-        if(memberUpdateRequest.getGender() != null) member.setGender(memberUpdateRequest.getGender());
-        if(memberUpdateRequest.getBirthDate() != null) member.setBirthDate(memberUpdateRequest.getBirthDate());
+        if (memberUpdateRequest.getEmail() != null && !memberUpdateRequest.getEmail().isBlank()) {
+            if (!memberUpdateRequest.getEmail().equals(member.getEmail()) &&
+                    memberRepository.existsByEmail(memberUpdateRequest.getEmail())) {
+                throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            }
+            member.setEmail(memberUpdateRequest.getEmail());
+        }
+
+        if (memberUpdateRequest.getPhone() != null && !memberUpdateRequest.getPhone().isBlank()) {
+
+            String rawPhone = memberUpdateRequest.getPhone().replaceAll("[^0-9]", "");
+
+
+            if (!rawPhone.equals(member.getPhone()) &&
+                    memberRepository.existsByPhone(rawPhone)) {
+                throw new IllegalArgumentException("이미 사용 중인 전화번호입니다.");
+            }
+            member.setPhone(rawPhone);
+        }
+
+        if (memberUpdateRequest.getGender() != null) {
+            member.setGender(memberUpdateRequest.getGender());
+        }
+
+        if (!member.isProfileComplete()) {
+            java.time.LocalDate defaultDate = java.time.LocalDate.of(1000, 1, 1);
+            if (!member.getBirthDate().equals(defaultDate)) {
+                member.setProfileComplete(true);
+            }
+        }
 
         return MemberResponse.from(member);
     }

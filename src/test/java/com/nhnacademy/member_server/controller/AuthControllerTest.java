@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nhnacademy.member_server.dto.request.LoginRequest;
+import com.nhnacademy.member_server.dto.request.member.LoginRequest;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.entity.member.Gender;
@@ -46,7 +46,7 @@ class AuthControllerTest {
     @DisplayName("로그인 성공 테스트")
     void loginSuccess() throws Exception {
         LoginRequest request = new LoginRequest("testId", "password");
-        TokenDto tokenDto = new TokenDto("access-token", "refresh-token");
+        TokenDto tokenDto = new TokenDto("access-token", "refresh-token", true);
         given(authService.loginUser(any(), any())).willReturn(tokenDto);
 
         mockMvc.perform(post("/api/auth/login")

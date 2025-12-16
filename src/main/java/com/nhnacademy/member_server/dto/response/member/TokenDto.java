@@ -8,4 +8,5 @@ import lombok.Getter;
 public class TokenDto {
     private String accessToken;
     private String refreshToken;
+    private boolean isProfileComplete;
 }
