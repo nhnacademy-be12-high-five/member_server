@@ -51,7 +51,7 @@ Content-Type: application/json
 %}
 
 ### 회원 정보 수정 (Member Server 직접 호출 - 수정됨)
-PATCH http://{{host}}/api/members/me
+PUT http://{{host}}/api/members/me
 Content-Type: application/json
 Authorization: Bearer {{access-token}}
 
