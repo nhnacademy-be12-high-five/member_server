@@ -121,4 +121,8 @@ public class Member {
         address.setMember(this);
     }
 
+    @Setter
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean isProfileComplete = false;
 }

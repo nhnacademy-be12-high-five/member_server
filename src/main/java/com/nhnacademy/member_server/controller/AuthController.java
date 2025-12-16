@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.dto.request.LoginRequest;
+import com.nhnacademy.member_server.dto.request.member.LoginRequest;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.global.jwt.WebUtils;

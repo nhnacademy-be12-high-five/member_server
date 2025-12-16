@@ -38,7 +38,7 @@ public class MemberController {
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/me")
+    @PutMapping("/me")
     public ResponseEntity<MemberResponse> updateMember(@RequestHeader(name = "X-User-ID") Long memberId,
                                                        @Valid @RequestBody MemberUpdateRequest memberUpdateRequest) {
         MemberResponse memberResponse = memberService.updateMember(memberId, memberUpdateRequest);
@@ -60,7 +60,6 @@ public class MemberController {
             @RequestParam("month") int month
     ) {
         List<Long> memberIds = memberService.getBirthdayMemberIds(month);
-
         return ResponseEntity.ok(memberIds);
     }
 

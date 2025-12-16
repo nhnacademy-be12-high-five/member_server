@@ -69,11 +69,12 @@ class MemberControllerTest {
     }
 
     @Test
-    @DisplayName("회원 정보 수정 (PATCH /api/members/me)")
+    @DisplayName("회원 정보 수정 (PUT /api/members/me)")
     void updateMemberSuccess() throws Exception {
         Long memberId = 1L;
 
         MemberUpdateRequest request = new MemberUpdateRequest(
+                "홍길동",
                 "new@email.com",
                 "010-9999-9999",
                 Gender.FEMALE,
@@ -89,7 +90,7 @@ class MemberControllerTest {
         given(memberService.updateMember(eq(memberId), any(MemberUpdateRequest.class)))
                 .willReturn(updatedResponse);
 
-        mockMvc.perform(patch("/api/members/me")
+        mockMvc.perform(put("/api/members/me")
                         .with(csrf())
                         .header("X-User-ID", memberId)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -50,6 +50,19 @@ Content-Type: application/json
     client.log("저장된 토큰: " + client.global.get("access-token"));
 %}
 
+### 회원 정보 수정 (Member Server 직접 호출 - 수정됨)
+PUT http://{{host}}/api/members/me
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{
+  "name": "변경할이름",
+  "phone": "010-7777-8888",
+  "birthday": "2000-01-01",
+  "gender": "MALE"
+}
+
+
 ### 멤버 정보 조회 테스트
 POST {{host}}/api/members/list
 Content-Type: application/json

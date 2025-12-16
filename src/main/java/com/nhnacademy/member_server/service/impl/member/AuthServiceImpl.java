@@ -62,6 +62,8 @@ public class AuthServiceImpl implements AuthService {
         Long memberId = userDetails.getMember().getId();
         Role role = userDetails.getMember().getRole();
 
+        boolean isProfileComplete = dbMember.isProfileComplete();
+
         String accessToken = jwtUtil.createAccessToken(memberId, role);
         String refreshToken = jwtUtil.createRefreshToken(memberId);
 
@@ -72,18 +74,22 @@ public class AuthServiceImpl implements AuthService {
                 TimeUnit.MILLISECONDS
         );
 
-        return new TokenDto(accessToken, refreshToken);
+        return new TokenDto(accessToken, refreshToken, isProfileComplete);
     }
 
     @Override
     @Transactional
     public void signup(MemberCreateRequest request) {
+
+        String rawPhone = request.getPhone().replaceAll("[^0-9]", "");
+
         if (memberRepository.existsByLoginId(request.getLoginId())) {
             throw new RuntimeException("이미 존재하는 아이디입니다.");
         }
         else if (memberRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("이미 존재하는 이메일입니다.");
-        } else if (memberRepository.existsByPhone(request.getPhone())) {
+        }
+        else if (memberRepository.existsByPhone(rawPhone)) {
             throw new RuntimeException("이미 존재하는 번호입니다.");
         }
 
@@ -103,7 +109,7 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
                 .gender(request.getGender())
-                .phone(request.getPhone())
+                .phone(rawPhone)
                 .email(request.getEmail())
                 .birthDate(request.getBirthDate())
                 .lastLoginAt(LocalDateTime.now())
@@ -111,6 +117,7 @@ public class AuthServiceImpl implements AuthService {
                 .role(finalRole)
                 .currentPoint(0L)
                 .grade(basicGrade)
+                .isProfileComplete(true)
                 .build();
 
         Member savedMember = memberRepository.save(member);
@@ -119,10 +126,9 @@ public class AuthServiceImpl implements AuthService {
             CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
             rabbitTemplate.convertAndSend("coupon-welcome-queue", message);
             log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
         }
-
     }
 
     @Override
@@ -147,6 +153,8 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("탈퇴된 회원입니다.");
         }
 
+        boolean isProfileComplete = member.isProfileComplete();
+
         String newAccessToken = jwtUtil.createAccessToken(member.getId(), member.getRole());
         String newRefreshToken = jwtUtil.createRefreshToken(member.getId());
 
@@ -157,7 +165,7 @@ public class AuthServiceImpl implements AuthService {
                 TimeUnit.MILLISECONDS
         );
 
-        return new TokenDto(newAccessToken, newRefreshToken);
+        return new TokenDto(newAccessToken, newRefreshToken, isProfileComplete);
     }
 
     @Override
@@ -182,7 +190,7 @@ public class AuthServiceImpl implements AuthService {
 
             return socialSignup(userInfo);
         });
-
+        boolean isProfileComplete = member.isProfileComplete();
         log.info(">>> DB 저장 성공! Member ID: {}, Role: {}", member.getId(), member.getRole());
 
         String accessToken = jwtUtil.createAccessToken(member.getId(), member.getRole());
@@ -198,7 +206,7 @@ public class AuthServiceImpl implements AuthService {
                 TimeUnit.MILLISECONDS
         );
 
-        return new TokenDto(accessToken, refreshToken);
+        return new TokenDto(accessToken, refreshToken, isProfileComplete);
     }
 
     private Member socialSignup(OAuth2UserInfo userInfo) {
@@ -228,7 +236,7 @@ public class AuthServiceImpl implements AuthService {
 
         log.info(">>> 생일 : {}", userInfo.getBirthday());
 
-        java.time.LocalDate birthDate = java.time.LocalDate.now();
+        java.time.LocalDate birthDate = java.time.LocalDate.of(1000, 1, 1);
         String rawBirth = userInfo.getBirthday();
         if (rawBirth != null) {
             try {
@@ -259,6 +267,7 @@ public class AuthServiceImpl implements AuthService {
                 .lastLoginAt(java.time.LocalDateTime.now())
                 .provider(provider)
                 .providerId(providerId)
+                .isProfileComplete(false)
                 .build();
 
         Member savedMember = memberRepository.save(member);
