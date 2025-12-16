@@ -13,10 +13,10 @@ import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
-import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
 import com.nhnacademy.member_server.entity.PointPolicy;
+import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
@@ -75,6 +75,11 @@ public class PointServiceImpl implements PointService {
                     case EARN_REVIEW -> policy.getReviewPoint();
                     case EARN_PHOTO_REVIEW -> policy.getPhotoPoint();
                     case EARN_SIGNUP -> policy.getSignupPoint();
+                    case EARN_REVIEW_UPGRADE -> {
+                        long diff = policy.getPhotoPoint() - policy.getReviewPoint();
+                        // 혹시 정책 변경으로 일반리뷰가 더 비싸지거나 같아지면 0원
+                        yield Math.max(diff, 0L);
+                    }
                     default -> 0L;
                 };
             }
