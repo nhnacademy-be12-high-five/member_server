@@ -25,6 +25,7 @@ import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.PointService;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class PointServiceImpl implements PointService {
     private final MemberRepository memberRepository;
     private final PointHistoryRepository pointHistoryRepository;
@@ -242,6 +244,28 @@ public class PointServiceImpl implements PointService {
         ));
 
         return newBalance;
+    }
+
+    @Override
+    public void reservePoint(Long memberId, Long amount, Long orderId) {
+        // TCC - Try: 포인트 선점 (실제 차감 진행)
+        PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
+        usePoint(request); // 잔액 부족 시 예외 발생 -> 주문 서버가 감지하고 롤백함
+        log.info("TCC Reserve(차감) 완료: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+    }
+
+    @Override
+    public void confirmPoint(Long memberId, Long amount, Long orderId) {
+        // TCC - Confirm: 확정
+        log.info("TCC Confirm(확정) 완료: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+    }
+
+    @Override
+    public void cancelPoint(Long memberId, Long amount, Long orderId) {
+        // TCC - Cancel: 보상 트랜잭션 (환불)
+        PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
+        revertPoint(request);
+        log.info("TCC Cancel(환불) 완료: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
     }
 
     // 검증 메서드
