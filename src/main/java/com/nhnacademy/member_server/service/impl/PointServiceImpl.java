@@ -248,24 +248,49 @@ public class PointServiceImpl implements PointService {
 
     @Override
     public void reservePoint(Long memberId, Long amount, Long orderId) {
-        // TCC - Try: 포인트 선점 (실제 차감 진행)
+        log.info("TCC Reserve 요청: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+
+        if (pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.USE_ORDER)) {
+            log.warn("이미 처리된 예약 요청입니다. (Idempotency Check Passed): orderId={}", orderId);
+            return;
+        }
+
         PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
-        usePoint(request); // 잔액 부족 시 예외 발생 -> 주문 서버가 감지하고 롤백함
-        log.info("TCC Reserve(차감) 완료: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+        usePoint(request);
+
+        log.info("TCC Reserve(차감) 완료: memberId={}, amount={}", memberId, amount);
     }
 
     @Override
     public void confirmPoint(Long memberId, Long amount, Long orderId) {
-        // TCC - Confirm: 확정
-        log.info("TCC Confirm(확정) 완료: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+
+        if (!pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.USE_ORDER)) {
+            log.error("예약(차감) 내역이 존재하지 않는 주문에 대한 확정 요청입니다. orderId={}", orderId);
+
+            throw new BusinessException(ErrorCode.POINT_NOT_FOUND);
+        }
+
+        log.info("TCC Confirm(확정) 완료: memberId={}, orderId={}", memberId, orderId);
     }
 
     @Override
     public void cancelPoint(Long memberId, Long amount, Long orderId) {
-        // TCC - Cancel: 보상 트랜잭션 (환불)
+        log.info("TCC Cancel 요청: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+
+        if (pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.REVERT_ORDER)) {
+            log.warn("이미 환불 처리된 요청입니다.: orderId={}", orderId);
+            return;
+        }
+        
+        if (!pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.USE_ORDER)) {
+            log.warn("차감 내역이 없어 환불을 수행하지 않습니다.: orderId={}", orderId);
+            return;
+        }
+
         PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
         revertPoint(request);
-        log.info("TCC Cancel(환불) 완료: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+
+        log.info("TCC Cancel(환불) 완료: memberId={}, orderId={}", memberId, orderId);
     }
 
     // 검증 메서드
