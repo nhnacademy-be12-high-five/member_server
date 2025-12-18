@@ -71,5 +71,18 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(errorCode.getCode(), "현재 도서 서비스를 이용할 수 없습니다."));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleIllegalStateException(IllegalStateException e) {
+        // 409 Conflict: 중복된 데이터가 있을 때 주로 씀
+        // e.getMessage()에는 "이미 가입된 이메일입니다"가 들어있음
+        return ResponseEntity.status(409).body(e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {
+        // 400 Bad Request
+        return ResponseEntity.status(400).body(e.getMessage());
+    }
+
     public record ErrorResponse(String code, String message){}
 }

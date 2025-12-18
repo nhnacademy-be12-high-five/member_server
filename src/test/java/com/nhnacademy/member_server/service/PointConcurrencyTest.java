@@ -22,9 +22,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -49,7 +51,8 @@ class PointConcurrencyTest {
     SocialLoginFactory socialLoginFactory;
     @MockitoBean
     PaycoLoginStrategy paycoLoginStrategy;
-
+    @MockBean
+    private JavaMailSender javaMailSender;
     private Long memberId;
 
     @BeforeEach
