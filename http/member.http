@@ -177,3 +177,15 @@ Authorization: Bearer {{access-token}}
 ### 회원 탈퇴
 DELETE {{host}}/api/members/me/withdraw
 Authorization: Bearer {{access-token}}
+
+### 1. 인증번호 전송 요청 (본인 이메일로 수정해서 실행하세요!)
+POST http://localhost:9001/api/auth/email/send?email=eseuyun@gmail.com
+
+### 2. 인증번호 검증 요청 (메일로 온 번호 6자리를 code에 넣고 실행하세요!)
+POST http://localhost:9001/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "eseuyun@gmail.com",
+  "code": "016068"
+}
