@@ -10,8 +10,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.Random;
 
 @Slf4j
 @Service // 스프링 빈 등록 (중요)
@@ -19,12 +19,12 @@ import java.util.Random;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
-    private final StringRedisTemplate redisTemplate; // Redis 도구
+    private final StringRedisTemplate redisTemplate;
     private final MemberRepository memberRepository;
 
-    private static final long LIMIT_TIME = 3 * 60; // 인증번호 유효시간 (3분)
-    private static final String PREFIX = "EMAIL_CERT:"; // Redis 키 구분용 접두사
-
+    private static final long LIMIT_TIME = 3 * 60;
+    private static final String PREFIX = "EMAIL_CERT:";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     @Override
     public void sendVerificationCode(String email) {
         if (email == null || email.isEmpty()) {
@@ -35,14 +35,11 @@ public class EmailServiceImpl implements EmailService {
             throw new IllegalStateException("이미 가입된 이메일입니다.");
         }
 
-        // 1. 6자리 난수 생성
         String code = createRandomCode();
 
-        // 2. Redis에 저장 (Key: "EMAIL_CERT:test@test.com", Value: "123456")
         redisTemplate.opsForValue().set(PREFIX + email, code, Duration.ofSeconds(LIMIT_TIME));
         log.info("인증번호 생성 및 Redis 저장 완료: email={}", email);
 
-        // 3. 메일 발송
         sendMail(email, code);
     }
 
@@ -52,18 +49,15 @@ public class EmailServiceImpl implements EmailService {
             return false;
         }
 
-        // Redis에서 코드 조회
         String storedCode = redisTemplate.opsForValue().get(PREFIX + email);
 
-        // 코드가 존재하고, 입력값과 일치하면 성공
         if (storedCode != null && storedCode.equals(inputCode)) {
-            redisTemplate.delete(PREFIX + email); // 인증 성공 시 즉시 삭제 (재사용 방지)
+            redisTemplate.delete(PREFIX + email);
             return true;
         }
         return false;
     }
 
-    // --- 내부 private 메서드 ---
 
     private void sendMail(String email, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -81,10 +75,9 @@ public class EmailServiceImpl implements EmailService {
     }
 
     private String createRandomCode() {
-        Random random = new Random();
         StringBuilder key = new StringBuilder();
         for (int i = 0; i < 6; i++) {
-            key.append(random.nextInt(10)); // 0~9
+            key.append(SECURE_RANDOM.nextInt(10));
         }
         return key.toString();
     }
