@@ -226,61 +226,52 @@ public class PointServiceImpl implements PointService {
         return newBalance;
     }
 
-    // [수정] TCC Reserve: 포인트 차감 후 'RESERVED' 상태로 저장
     @Override
     public void reservePoint(Long memberId, Long amount, Long orderId) {
         log.info("TCC Reserve 요청: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
 
-        // 멱등성 검사
         if (pointHistoryRepository.existsByOrderIdAndPointEventType(orderId, PointEventType.USE_ORDER)) {
             log.warn("이미 처리된 예약 요청입니다.: orderId={}", orderId);
             return;
         }
 
         PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
-        // 여기서 핵심! 상태를 RESERVED로 넘김
+
         processUsePoint(request, PointStatus.RESERVED);
 
         log.info("TCC Reserve(차감/예약) 완료: memberId={}, amount={}", memberId, amount);
     }
 
-    // [수정] TCC Confirm: 'RESERVED' 상태를 'CONFIRMED'로 변경
     @Override
     public void confirmPoint(Long memberId, Long amount, Long orderId) {
-        // 1. 예약 내역 조회
+
         PointHistory history = pointHistoryRepository.findByOrderIdAndPointEventType(orderId, PointEventType.USE_ORDER)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POINT_NOT_FOUND));
 
-        // 2. 상태 검증
         if (history.getStatus() == PointStatus.CONFIRMED) {
             log.info("이미 확정된 주문입니다: orderId={}", orderId);
             return;
         }
 
         if (history.getStatus() != PointStatus.RESERVED) {
-            // CANCELED 상태 등에서 Confirm이 들어오면 에러 혹은 무시
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE); // 적절한 에러코드 사용
         }
 
-        // 3. 상태 변경 (DB 업데이트)
         history.updateStatus(PointStatus.CONFIRMED);
 
         log.info("TCC Confirm(확정) 완료: memberId={}, orderId={}", memberId, orderId);
     }
 
-    // [수정] TCC Cancel: 'RESERVED' 상태일 때만 취소/환불 진행
     @Override
     public void cancelPoint(Long memberId, Long amount, Long orderId) {
         log.info("TCC Cancel 요청: memberId={}, orderId={}", memberId, orderId);
 
-        // 1. 예약 내역 조회
         PointHistory history = pointHistoryRepository.findByOrderIdAndPointEventType(orderId, PointEventType.USE_ORDER)
                 .orElseThrow(() -> {
                     log.warn("취소할 내역이 없습니다. orderId={}", orderId);
                     return new BusinessException(ErrorCode.POINT_NOT_FOUND);
                 });
 
-        // 2. 상태 검증 (CodeRabbit 지적 사항: Reserve된 것만 취소해야 함)
         if (history.getStatus() == PointStatus.CANCELED) {
             log.warn("이미 취소된 주문입니다: orderId={}", orderId);
             return;
@@ -288,21 +279,17 @@ public class PointServiceImpl implements PointService {
 
         if (history.getStatus() == PointStatus.CONFIRMED) {
             log.error("이미 확정(Confirm)된 주문은 TCC Cancel로 취소할 수 없습니다. (별도 반품 로직 필요): orderId={}", orderId);
-            // 비즈니스 로직에 따라 여기서 에러를 뱉거나, return 하거나 선택
             return;
         }
 
-        // 3. 환불 로직 수행 (포인트 되돌리기)
-        PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
-        revertPoint(request); // 이 메서드는 'REVERT_ORDER' 타입의 히스토리를 새로 쌓습니다 (Status는 기본값 CONFIRMED)
-
-        // 4. 원본 예약 내역 상태를 CANCELED로 변경
         history.updateStatus(PointStatus.CANCELED);
+
+        PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
+
+        revertPoint(request);
 
         log.info("TCC Cancel(환불) 완료: memberId={}, orderId={}", memberId, orderId);
     }
-
-
 
     private Long processUsePoint(PointTransactionRequest requestDto, PointStatus status) {
         validateTransactionRequest(requestDto);
