@@ -16,6 +16,7 @@ import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
 import com.nhnacademy.member_server.entity.PointPolicy;
+import com.nhnacademy.member_server.entity.PointStatus;
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
@@ -98,7 +99,8 @@ public class PointServiceImpl implements PointService {
                     pointToEarn,
                     description,
                     requestDto.getEventType(),
-                    newPointBalance
+                    newPointBalance,
+                    PointStatus.CONFIRMED
             ));
             return newPointBalance;
         }
@@ -106,32 +108,8 @@ public class PointServiceImpl implements PointService {
     }
 
     @Override
-    public Long usePoint(PointTransactionRequest requestDto){
-        validateTransactionRequest(requestDto);
-
-        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-
-        long amountUsedPoint = requestDto.getAmount();
-
-        if(member.getCurrentPoint() < amountUsedPoint){
-            throw new BusinessException(POINT_NOT_ENOUGH);
-        }
-
-        // 잔액 차감
-        long newPointBalance = member.getCurrentPoint() - amountUsedPoint;
-        member.setCurrentPoint(newPointBalance);
-
-        String description = String.format("%s (주문번호: %d)",PointEventType.USE_ORDER.getDescription(), requestDto.getOrderId());
-
-        pointHistoryRepository.save(new PointHistory(
-                requestDto.getOrderId(),
-                member,
-                -amountUsedPoint, // 사용 -> 음수저장
-                description,
-                PointEventType.USE_ORDER,
-                newPointBalance
-        ));
-        return newPointBalance;
+    public Long usePoint(PointTransactionRequest requestDto) {
+        return processUsePoint(requestDto, PointStatus.CONFIRMED);
     }
 
     @Override
@@ -154,7 +132,8 @@ public class PointServiceImpl implements PointService {
                 amountRevertedPoint,
                 description,
                 PointEventType.REVERT_ORDER,
-                newPointBalance
+                newPointBalance,
+                PointStatus.CONFIRMED
         ));
         return newPointBalance;
     }
@@ -240,57 +219,119 @@ public class PointServiceImpl implements PointService {
                 amount,
                 description,
                 eventType,
-                newBalance
+                newBalance,
+                PointStatus.CONFIRMED
         ));
 
         return newBalance;
     }
 
+    // [수정] TCC Reserve: 포인트 차감 후 'RESERVED' 상태로 저장
     @Override
     public void reservePoint(Long memberId, Long amount, Long orderId) {
         log.info("TCC Reserve 요청: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
 
-        if (pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.USE_ORDER)) {
-            log.warn("이미 처리된 예약 요청입니다. (Idempotency Check Passed): orderId={}", orderId);
+        // 멱등성 검사
+        if (pointHistoryRepository.existsByOrderIdAndPointEventType(orderId, PointEventType.USE_ORDER)) {
+            log.warn("이미 처리된 예약 요청입니다.: orderId={}", orderId);
             return;
         }
 
         PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
-        usePoint(request);
+        // 여기서 핵심! 상태를 RESERVED로 넘김
+        processUsePoint(request, PointStatus.RESERVED);
 
-        log.info("TCC Reserve(차감) 완료: memberId={}, amount={}", memberId, amount);
+        log.info("TCC Reserve(차감/예약) 완료: memberId={}, amount={}", memberId, amount);
     }
 
+    // [수정] TCC Confirm: 'RESERVED' 상태를 'CONFIRMED'로 변경
     @Override
     public void confirmPoint(Long memberId, Long amount, Long orderId) {
+        // 1. 예약 내역 조회
+        PointHistory history = pointHistoryRepository.findByOrderIdAndPointEventType(orderId, PointEventType.USE_ORDER)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POINT_NOT_FOUND));
 
-        if (!pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.USE_ORDER)) {
-            log.error("예약(차감) 내역이 존재하지 않는 주문에 대한 확정 요청입니다. orderId={}", orderId);
-
-            throw new BusinessException(ErrorCode.POINT_NOT_FOUND);
+        // 2. 상태 검증
+        if (history.getStatus() == PointStatus.CONFIRMED) {
+            log.info("이미 확정된 주문입니다: orderId={}", orderId);
+            return;
         }
+
+        if (history.getStatus() != PointStatus.RESERVED) {
+            // CANCELED 상태 등에서 Confirm이 들어오면 에러 혹은 무시
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE); // 적절한 에러코드 사용
+        }
+
+        // 3. 상태 변경 (DB 업데이트)
+        history.updateStatus(PointStatus.CONFIRMED);
 
         log.info("TCC Confirm(확정) 완료: memberId={}, orderId={}", memberId, orderId);
     }
 
+    // [수정] TCC Cancel: 'RESERVED' 상태일 때만 취소/환불 진행
     @Override
     public void cancelPoint(Long memberId, Long amount, Long orderId) {
-        log.info("TCC Cancel 요청: memberId={}, amount={}, orderId={}", memberId, amount, orderId);
+        log.info("TCC Cancel 요청: memberId={}, orderId={}", memberId, orderId);
 
-        if (pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.REVERT_ORDER)) {
-            log.warn("이미 환불 처리된 요청입니다.: orderId={}", orderId);
+        // 1. 예약 내역 조회
+        PointHistory history = pointHistoryRepository.findByOrderIdAndPointEventType(orderId, PointEventType.USE_ORDER)
+                .orElseThrow(() -> {
+                    log.warn("취소할 내역이 없습니다. orderId={}", orderId);
+                    return new BusinessException(ErrorCode.POINT_NOT_FOUND);
+                });
+
+        // 2. 상태 검증 (CodeRabbit 지적 사항: Reserve된 것만 취소해야 함)
+        if (history.getStatus() == PointStatus.CANCELED) {
+            log.warn("이미 취소된 주문입니다: orderId={}", orderId);
             return;
         }
-        
-        if (!pointHistoryRepository.existsByOrderIdAndEventType(orderId, PointEventType.USE_ORDER)) {
-            log.warn("차감 내역이 없어 환불을 수행하지 않습니다.: orderId={}", orderId);
+
+        if (history.getStatus() == PointStatus.CONFIRMED) {
+            log.error("이미 확정(Confirm)된 주문은 TCC Cancel로 취소할 수 없습니다. (별도 반품 로직 필요): orderId={}", orderId);
+            // 비즈니스 로직에 따라 여기서 에러를 뱉거나, return 하거나 선택
             return;
         }
 
+        // 3. 환불 로직 수행 (포인트 되돌리기)
         PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
-        revertPoint(request);
+        revertPoint(request); // 이 메서드는 'REVERT_ORDER' 타입의 히스토리를 새로 쌓습니다 (Status는 기본값 CONFIRMED)
+
+        // 4. 원본 예약 내역 상태를 CANCELED로 변경
+        history.updateStatus(PointStatus.CANCELED);
 
         log.info("TCC Cancel(환불) 완료: memberId={}, orderId={}", memberId, orderId);
+    }
+
+
+
+    private Long processUsePoint(PointTransactionRequest requestDto, PointStatus status) {
+        validateTransactionRequest(requestDto);
+        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId())
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        long amountUsedPoint = requestDto.getAmount();
+        if (member.getCurrentPoint() < amountUsedPoint) {
+            throw new BusinessException(POINT_NOT_ENOUGH);
+        }
+
+        // 잔액 차감
+        long newPointBalance = member.getCurrentPoint() - amountUsedPoint;
+        member.setCurrentPoint(newPointBalance);
+
+        String description = String.format("%s (주문번호: %d)", PointEventType.USE_ORDER.getDescription(), requestDto.getOrderId());
+
+        // History 저장 시 전달받은 Status 사용
+        pointHistoryRepository.save(new PointHistory(
+                requestDto.getOrderId(),
+                member,
+                -amountUsedPoint,
+                description,
+                PointEventType.USE_ORDER,
+                newPointBalance,
+                status // RESERVED or CONFIRMED
+        ));
+
+        return newPointBalance;
     }
 
     // 검증 메서드

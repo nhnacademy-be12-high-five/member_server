@@ -2,6 +2,7 @@ package com.nhnacademy.member_server.repository;
 
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.PointHistory;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,5 +20,8 @@ public interface PointHistoryRepository extends JpaRepository<PointHistory, Long
     Long sumEarnedPoints(@Param("memberId") Long memberId);
 
     // 멱등성 검사용
-    boolean existsByOrderIdAndEventType(Long orderId, PointEventType eventType);
+    boolean existsByOrderIdAndPointEventType(Long orderId, PointEventType eventType);
+
+    // 상태 변경을 위한 단건 조회용
+    Optional<PointHistory> findByOrderIdAndPointEventType(Long orderId, PointEventType pointEventType);
 }
