@@ -68,4 +68,10 @@ public class AuthController {
 
         return ResponseEntity.ok(tokenDto);
     }
+
+    @GetMapping("/exists/login-id/{loginId}")
+    public ResponseEntity<Boolean> checkLoginId(@PathVariable String loginId) {
+        boolean exists = memberRepository.existsByLoginId(loginId);
+        return ResponseEntity.ok(exists); // true면 중복, false면 사용 가능
+    }
 }

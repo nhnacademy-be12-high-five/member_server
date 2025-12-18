@@ -5,6 +5,7 @@ import com.nhnacademy.member_server.dto.response.member.MemberResponse;
 import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
+import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.AuthService;
 import com.nhnacademy.member_server.service.member.MemberService;
 import jakarta.validation.Valid;
@@ -31,6 +32,8 @@ public class MemberController {
 
     private final MemberService memberService;
     private final AuthService authService;
+    private final MemberRepository memberRepository;
+
 
     @GetMapping("/me")
     public ResponseEntity<MemberResponse> getMember(@RequestHeader(name = "X-User-ID") Long memberId){

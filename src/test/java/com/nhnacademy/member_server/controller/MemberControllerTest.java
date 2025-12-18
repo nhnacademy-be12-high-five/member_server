@@ -6,6 +6,7 @@ import com.nhnacademy.member_server.dto.response.member.MemberResponse;
 import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
 import com.nhnacademy.member_server.entity.member.Gender;
 import com.nhnacademy.member_server.entity.member.Role;
+import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.AuthService;
 import com.nhnacademy.member_server.service.member.MemberService;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,9 @@ class MemberControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private MemberRepository memberRepository;
 
     @Test
     @DisplayName("내 정보 조회 (GET /api/members/me)")
