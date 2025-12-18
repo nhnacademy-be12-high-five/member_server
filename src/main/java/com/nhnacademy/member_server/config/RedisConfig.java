@@ -7,12 +7,14 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -56,6 +58,23 @@ public class RedisConfig {
     }
 
     @Bean
+    public RedisTemplate<String, String> luaRedisTemplate(
+            RedisConnectionFactory redisConnectionFactory
+    ) {
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(redisConnectionFactory);
+
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new StringRedisSerializer());
+
+        template.afterPropertiesSet();
+        return template;
+    }
+
+
+    @Bean
     public CacheManager cacheManager() {
         RedisCacheConfiguration config = RedisCacheConfiguration
                 .defaultCacheConfig()
@@ -65,5 +84,21 @@ public class RedisConfig {
         return RedisCacheManager.builder(redisConnectionFactory())
                 .cacheDefaults(config)
                 .build();
+    }
+
+    @Bean
+    public DefaultRedisScript<Long> cartUpsertScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("lua/cart_upsert.lua"));
+        script.setResultType(Long.class);
+        return script;
+    }
+
+    @Bean
+    public DefaultRedisScript<Long> cartMergeScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("lua/cart_merge.lua"));
+        script.setResultType(Long.class);
+        return script;
     }
 }
