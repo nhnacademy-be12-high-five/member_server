@@ -9,6 +9,7 @@ import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.entity.member.Status;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
+import com.nhnacademy.member_server.scheduler.CartTTLScanScheduler;
 import com.nhnacademy.member_server.service.impl.social.PaycoLoginStrategy;
 import com.nhnacademy.member_server.service.social.SocialLoginFactory;
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -53,6 +55,10 @@ class PointConcurrencyTest {
     PaycoLoginStrategy paycoLoginStrategy;
     @MockBean
     private JavaMailSender javaMailSender;
+    @MockBean
+    DefaultRedisScript<Long> redisScript;
+
+
     private Long memberId;
 
     @BeforeEach

@@ -32,6 +32,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
@@ -62,6 +63,8 @@ class PointScenarioTest {
     @MockitoBean
     PaycoLoginStrategy paycoLoginStrategy;
 
+    @MockBean
+    DefaultRedisScript<Long> redisScript;
 
     @MockBean
     private JavaMailSender javaMailSender;
