@@ -40,7 +40,7 @@ public class EmailServiceImpl implements EmailService {
 
         // 2. Redis에 저장 (Key: "EMAIL_CERT:test@test.com", Value: "123456")
         redisTemplate.opsForValue().set(PREFIX + email, code, Duration.ofSeconds(LIMIT_TIME));
-        log.info("인증번호 생성 및 Redis 저장 완료: email={}, code={}", email, code);
+        log.info("인증번호 생성 및 Redis 저장 완료: email={}", email);
 
         // 3. 메일 발송
         sendMail(email, code);
