@@ -124,7 +124,7 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
-            rabbitTemplate.convertAndSend("coupon-welcome-queue", message);
+            rabbitTemplate.convertAndSend("high-five-coupon-welcome-queue", message);
             log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
         } catch (Exception e) {
             log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
@@ -274,7 +274,7 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
-            rabbitTemplate.convertAndSend("coupon-welcome-queue", message);
+            rabbitTemplate.convertAndSend("high-five-coupon-welcome-queue", message);
             log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
         }catch (Exception e){
             log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
