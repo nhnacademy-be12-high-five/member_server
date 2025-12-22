@@ -98,7 +98,7 @@ class AuthServiceImplTest {
 
 
         verify(memberRepository).save(any(Member.class));
-        verify(rabbitTemplate).convertAndSend(eq("coupon-welcome-queue"), any(Object.class));
+        verify(rabbitTemplate).convertAndSend(eq("high-five-coupon-welcome-queue"), any(Object.class));
     }
 
     @Test
