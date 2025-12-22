@@ -1,15 +1,11 @@
 package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.dto.request.member.LoginRequest;
-import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
-import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,10 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final MemberRepository memberRepository;
-    @Value("${jwt.refresh_expiration_time}")
-    private Long refreshExpirationTime;
-
     private final AuthService authService;
 
     @PostMapping("/login")
@@ -29,18 +21,6 @@ public class AuthController {
         TokenDto tokenDto = authService.loginUser(loginRequest.getLoginId(), loginRequest.getPassword());
         return ResponseEntity.ok(tokenDto);
     }
-
-    @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@RequestBody MemberCreateRequest memberCreateRequest) {
-        authService.signup(memberCreateRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
-    }
-
-    @GetMapping("/check-id/{loginId}")
-    public ResponseEntity<Boolean> checkId(@PathVariable String loginId) {
-        return ResponseEntity.status(201).body(memberRepository.existsByLoginId(loginId));
-    }
-
 
     @PostMapping("/reissue")
     public ResponseEntity<TokenDto> reissue(
@@ -67,11 +47,5 @@ public class AuthController {
         TokenDto tokenDto = authService.loginSocial(provider, code);
 
         return ResponseEntity.ok(tokenDto);
-    }
-
-    @GetMapping("/exists/login-id/{loginId}")
-    public ResponseEntity<Boolean> checkLoginId(@PathVariable String loginId) {
-        boolean exists = memberRepository.existsByLoginId(loginId);
-        return ResponseEntity.ok(exists); // true면 중복, false면 사용 가능
     }
 }
