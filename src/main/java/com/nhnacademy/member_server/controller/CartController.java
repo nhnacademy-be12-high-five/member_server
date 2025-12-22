@@ -30,11 +30,14 @@ public class CartController{
                                                          @CookieValue(value = "guestCookie", required = false) String guestId,
                                                          @RequestHeader(name = "X-USER-ID", required = false) Long XId,
                                                          HttpServletResponse httpResponse) {
+        // 회원 비회원을 구분
         Long memberId = Objects.isNull(XId) ? null : XId;
 
+        // 둘 다 존재하지 않으면 새로운 guest 장바구니 생성
         if (memberId == null && guestId == null) {
             guestId = UUID.randomUUID().toString();
-            CookieUtils.addCookie(httpResponse, "guestCookie", guestId, 60 * 60 * 24 * 7);
+            // 만료 시간 12시간 설정
+            CookieUtils.addCookie(httpResponse, "guestCookie", guestId, 60 * 60 * 12);
         }
 
         CartAddResponse response = cartService.addToCart(request, memberId, guestId);
@@ -84,6 +87,7 @@ public class CartController{
     public ResponseEntity<Void> mergeGuestCart(@RequestHeader(name = "X-USER-ID", required = false) Long memberId,
                                                @CookieValue(value = "guestCookie", required = false) String guestId,
                                                HttpServletResponse response){
+        // 비회원 장바구니가 있으면 병합
         if(guestId != null){
             cartService.migrateGuestCart(guestId, memberId);
             CookieUtils.deleteCookie(response, "guestCookie");

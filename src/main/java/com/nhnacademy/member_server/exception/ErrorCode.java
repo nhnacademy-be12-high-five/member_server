@@ -13,7 +13,7 @@ public enum ErrorCode {
     // Common
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "C001", "잘못된 입력값입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다."),
-
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST,"C003" ,"요청 방식이 잘못됐습니다." ),
     // Cart
     CART_NOT_FOUND(HttpStatus.NOT_FOUND, "CT001", "해당 장바구니를 찾을 수 없습니다."),
     CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "CT002", "장바구니에 해당 상품이 존재하지 않습니다."),
