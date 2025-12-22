@@ -33,4 +33,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     List<Object[]> findSimpleMembers(@Param("memberIds") List<Long> memberIds);
 
     Optional<Member> findByProviderId(String providerId);
+
+    Optional<Member> findByEmail(String email);
+
+    Optional<Member> findByLoginIdAndEmail(String loginId, String email);
 }

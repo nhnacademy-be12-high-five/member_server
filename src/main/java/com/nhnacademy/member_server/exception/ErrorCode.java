@@ -44,6 +44,7 @@ public enum ErrorCode {
     POINT_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "P004", "포인트 정책이 설정되지 않았습니다"),
 
     // Member
+    AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "M004", "인증번호가 일치하지 않습니다."),
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "M001", "존재하지 않는 회원입니다.");
 
     private final HttpStatus status;

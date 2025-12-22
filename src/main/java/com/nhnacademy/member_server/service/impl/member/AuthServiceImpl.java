@@ -2,9 +2,12 @@ package com.nhnacademy.member_server.service.impl.member;
 
 import com.nhnacademy.member_server.dto.message.CouponIssueMessage;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
+import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.dto.response.social.OAuth2UserInfo;
 import com.nhnacademy.member_server.entity.member.*;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
@@ -15,12 +18,14 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.service.social.SocialLoginFactory;
 import com.nhnacademy.member_server.service.social.SocialLoginStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -42,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final GradeRepository gradeRepository;
     private final RabbitTemplate rabbitTemplate;
     private final SocialLoginFactory socialLoginFactory;
+    private final EmailService emailService;
 
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
@@ -80,13 +86,16 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void signup(MemberCreateRequest request) {
+        String safeLoginId = request.getLoginId().trim();
+        String safeName = request.getName().trim();
+        String safeEmail = request.getEmail().trim();
 
         String rawPhone = request.getPhone().replaceAll("[^0-9]", "");
 
-        if (memberRepository.existsByLoginId(request.getLoginId())) {
+        if (memberRepository.existsByLoginId(safeLoginId)) {
             throw new RuntimeException("이미 존재하는 아이디입니다.");
         }
-        else if (memberRepository.existsByEmail(request.getEmail())) {
+        else if (memberRepository.existsByEmail(safeEmail)) {
             throw new RuntimeException("이미 존재하는 이메일입니다.");
         }
         else if (memberRepository.existsByPhone(rawPhone)) {
@@ -105,12 +114,12 @@ public class AuthServiceImpl implements AuthService {
         Role finalRole = Role.USER;
 
         Member member = Member.builder()
-                .loginId(request.getLoginId())
+                .loginId(safeLoginId)
                 .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
+                .name(safeName)
                 .gender(request.getGender())
                 .phone(rawPhone)
-                .email(request.getEmail())
+                .email(safeEmail)
                 .birthDate(request.getBirthDate())
                 .lastLoginAt(LocalDateTime.now())
                 .status(Status.ACTIVE)
@@ -120,14 +129,20 @@ public class AuthServiceImpl implements AuthService {
                 .isProfileComplete(true)
                 .build();
 
-        Member savedMember = memberRepository.save(member);
-
         try {
-            CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
-            rabbitTemplate.convertAndSend("coupon-welcome-queue", message);
-            log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
-        } catch (Exception e) {
-            log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
+            Member savedMember = memberRepository.save(member);
+
+            try {
+                CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
+                rabbitTemplate.convertAndSend("coupon-welcome-queue", message);
+                log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
+            } catch (Exception e) {
+                log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
+            }
+
+        } catch (DataIntegrityViolationException e) {
+            log.warn("회원가입 동시성 이슈 발생: {}", safeLoginId);
+            throw new RuntimeException("이미 사용 중인 정보(아이디/이메일 등)입니다.");
         }
     }
 
@@ -282,6 +297,49 @@ public class AuthServiceImpl implements AuthService {
 
         return savedMember;
 
+    }
+
+    @Override
+    public String findLoginIdByEmail(String email, String code) {
+        boolean isVerified = emailService.verifyCode(email, code, EmailType.FIND_ID);
+
+        if (!isVerified) {
+            throw new IllegalArgumentException("인증번호가 일치하지 않거나 만료되었습니다.");
+        }
+
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("해당 이메일로 가입된 회원이 없습니다."));
+
+        return maskLoginId(member.getLoginId());
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+        String loginId = request.getLoginId();
+        String email = request.getEmail();
+        String authCode = request.getAuthCode();
+        String newPassword = request.getNewPassword();
+
+        boolean isVerified = emailService.verifyCode(email, authCode, EmailType.RESET_PASSWORD);
+        if (!isVerified) {
+            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
+        }
+
+        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        member.setPassword(passwordEncoder.encode(newPassword));
+
+        memberRepository.save(member);
+    }
+
+
+    private String maskLoginId(String loginId) {
+        if (loginId == null || loginId.length() < 3) {
+            return loginId; // 너무 짧으면 그대로 노출하거나 처리하지 않음
+        }
+        return loginId.substring(0, 2) + "*".repeat(loginId.length() - 2);
     }
 
 }

@@ -1,7 +1,10 @@
 package com.nhnacademy.member_server.service.member;
 
-public interface EmailService {
-    void sendVerificationCode(String email);
+import com.nhnacademy.member_server.entity.member.EmailType;
 
-    boolean verifyCode(String email, String inputCode);
+public interface EmailService {
+    void sendVerificationCode(String email, EmailType type);
+
+    boolean verifyCode(String email, String inputCode, EmailType type);
+
 }
