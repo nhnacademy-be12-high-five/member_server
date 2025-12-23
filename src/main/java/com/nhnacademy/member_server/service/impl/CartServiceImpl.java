@@ -46,16 +46,45 @@ public class CartServiceImpl implements CartService {
     private static final long CART_TTL_SECONDS = 12L * 60 * 60;
     private static final long CART_EMPTY_TTL_SECONDS = 60 * 60 * 2L;
 
+    private static String memberKey(Long memberId) { return "cart:m:" + memberId; }
+    private static String guestKey(String guestId) { return "cart:g:" + guestId; }
+    private static String fieldOf(Long bookId) { return String.valueOf(bookId); }
+
+
     // redis 키 부여 메서드 (회원, 비회원 구분)
     private String getRedisKey(Long memberId, String guestId) {
-        if (memberId != null) return "cart:m:" + memberId;
-        if (guestId != null && !guestId.isBlank()) return "cart:g:" + guestId;
-        throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        boolean hasMember = memberId != null;
+        boolean hasGuest = guestId != null && !guestId.isBlank();
+
+        if (!hasMember && !hasGuest) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        if (hasMember) return memberKey(memberId);
+        return guestKey(guestId);
     }
 
     // TTL 초기화 메서드
     private void touchTtl(String key) {
-        luaRedisTemplate.expire(key, CART_TTL_SECONDS, TimeUnit.SECONDS);
+        try {
+            Boolean ok = luaRedisTemplate.expire(key, CART_TTL_SECONDS, TimeUnit.SECONDS);
+            if (!Boolean.TRUE.equals(ok)) {
+                log.warn("TTL touch failed. key={}", key);
+            }
+        } catch (Exception e) {
+            log.warn("TTL touch error. key={}", key, e);
+        }
+    }
+
+    // 빈 카트 TTL 적용
+    private void touchEmptyTtl(String key) {
+        try {
+            Boolean ok = luaRedisTemplate.expire(key, CART_EMPTY_TTL_SECONDS, TimeUnit.SECONDS);
+            if (!Boolean.TRUE.equals(ok)) {
+                log.warn("Empty TTL touch failed. key={}", key);
+            }
+        } catch (Exception e) {
+            log.warn("Empty TTL touch error. key={}", key, e);
+        }
     }
 
     // Redis에 해당 키 존재하는지 확인 메서드
@@ -190,7 +219,7 @@ public class CartServiceImpl implements CartService {
                 touchTtl(key);
             } else {
                 // 장바구니 비워져 있으면 ttl 2시간으로 감소
-                luaRedisTemplate.expire(key,CART_EMPTY_TTL_SECONDS, TimeUnit.SECONDS);
+                touchEmptyTtl(key);
             }
         } catch (Exception e) {
             log.error("Redis error during deleteCartItem", e);
@@ -204,7 +233,7 @@ public class CartServiceImpl implements CartService {
         String key = getRedisKey(memberId, guestId);
         try {
             luaRedisTemplate.delete(key);
-            luaRedisTemplate.expire(key,CART_EMPTY_TTL_SECONDS, TimeUnit.SECONDS);
+            touchEmptyTtl(key);
         } catch (Exception e) {
             log.error("Redis error during deleteAllCartItem", e);
             throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
@@ -217,8 +246,8 @@ public class CartServiceImpl implements CartService {
         // 비회원 장바구니 없거나 회원 아니면 바로 리턴 (방어 코드)
         if (guestId == null || guestId.isBlank() || memberId == null) return;
 
-        String guestKey = getRedisKey(null, guestId);
-        String memberKey = getRedisKey(memberId, null);
+        String guestKey = guestKey(guestId);
+        String memberKey = memberKey(memberId);
 
         try {
             // 병합 할 내용 없으면 종료
@@ -235,6 +264,9 @@ public class CartServiceImpl implements CartService {
             );
 
             if (ok == null) throw new BusinessException(ErrorCode.REDIS_SERVER_ERROR);
+
+            touchTtl(memberKey);
+            luaRedisTemplate.delete(guestKey);
 
         } catch (BusinessException be) {
             throw be;
