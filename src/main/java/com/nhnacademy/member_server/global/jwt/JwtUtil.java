@@ -38,6 +38,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .setSubject(String.valueOf(memberId))
+                .claim("memberId", memberId)
                 .claim("role", role.name())
                 .setIssuedAt(now)
                 .setExpiration(expirationDate)
@@ -61,6 +62,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .setSubject(String.valueOf(memberId))
+                .claim("memberId", memberId)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(secretKey, SignatureAlgorithm.HS256)
