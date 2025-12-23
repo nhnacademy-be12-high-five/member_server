@@ -150,6 +150,7 @@ class AddressControllerTest {
     void updateAddressSuccess() throws Exception {
         Long memberId = 1L;
         Long addressId = 30L;
+
         AddressRequest request = AddressRequest.builder()
                 .alias("이사 간 집")
                 .recipient("이순신")
@@ -160,12 +161,16 @@ class AddressControllerTest {
                 .defaultAddress(true)
                 .build();
 
+        // [수정] Response 객체에도 모든 필드 값을 채워줘야 Body에 null이 안 뜹니다.
         AddressResponse response = AddressResponse.builder()
                 .addressId(addressId)
                 .alias("이사 간 집")
                 .recipient("이순신")
+                .phone("010-9999-8888")
+                .zipCode("54321")
                 .roadAddress("광주시")
-                .isDefault(true)
+                .detailAddress("505호")
+                .isDefault(true) // 필드명이 isDefault여도 JSON은 default로 나갈 수 있음
                 .build();
 
         given(addressService.modifyAddress(eq(memberId), eq(addressId), any(AddressRequest.class)))
@@ -177,9 +182,10 @@ class AddressControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alias").value("이사 간 집"))
-                .andExpect(jsonPath("$.isDefault").value(true));
+                // [수정] 로그 확인 결과 JSON path가 $.default로 나오고 있습니다.
+                .andExpect(jsonPath("$.default").value(true))
+                .andExpect(jsonPath("$.recipient").value("이순신"));
     }
-
     @Test
     @DisplayName("배송지 삭제 (DELETE /api/address/{address-id})")
     void deleteAddressSuccess() throws Exception {
