@@ -1,6 +1,5 @@
 package com.nhnacademy.member_server.global.jwt;
 
-
 import com.nhnacademy.member_server.entity.member.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -38,7 +37,6 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .setSubject(String.valueOf(memberId))
-                .claim("memberId", memberId)
 
                 .claim("role", role.name())
                 .setIssuedAt(now)
@@ -63,7 +61,6 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .setSubject(String.valueOf(memberId))
-                .claim("memberId", memberId)
 
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
