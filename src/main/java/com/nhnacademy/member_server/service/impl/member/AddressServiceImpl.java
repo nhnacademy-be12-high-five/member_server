@@ -5,6 +5,8 @@ import com.nhnacademy.member_server.dto.response.member.AddressListResponse;
 import com.nhnacademy.member_server.dto.response.member.AddressResponse;
 import com.nhnacademy.member_server.entity.member.Address;
 import com.nhnacademy.member_server.entity.member.Member;
+import com.nhnacademy.member_server.exception.BusinessException; // [추가]
+import com.nhnacademy.member_server.exception.ErrorCode; // [추가]
 import com.nhnacademy.member_server.repository.AddressRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.AddressService;
@@ -23,11 +25,14 @@ public class AddressServiceImpl implements AddressService {
     @Transactional(readOnly = true)
     @Override
     public AddressResponse findDefaultAddress(Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
         if (member.getDefaultAddressId() == null) {
-            throw new RuntimeException("설정된 기본 배송지가 없습니다.");
+            throw new BusinessException(ErrorCode.DEFAULT_ADDRESS_NOT_FOUND);
         }
-        Address defaultAddress = addressRepository.findById(member.getDefaultAddressId()).orElseThrow(() -> new RuntimeException("설정된 기본 배송지가 없음"));
+        Address defaultAddress = addressRepository.findById(member.getDefaultAddressId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADDRESS_NOT_FOUND));
 
         return AddressResponse.from(defaultAddress);
     }
@@ -35,7 +40,9 @@ public class AddressServiceImpl implements AddressService {
     @Transactional(readOnly = true)
     @Override
     public AddressListResponse findAddressList(Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
         List<Address> addressList = member.getAddresses();
         List<AddressResponse> addressResponseList = new ArrayList<>();
 
@@ -48,17 +55,23 @@ public class AddressServiceImpl implements AddressService {
     @Transactional(readOnly = true)
     @Override
     public AddressResponse findAddress(Long memberId, Long addressId) {
-        Address address = addressRepository.findById(addressId).orElseThrow(() -> new RuntimeException("존재하지 않는 주소"));
-        if(!address.getMember().getId().equals(memberId)) throw new RuntimeException("사용자의 주소만 조회할 수 있습니다");
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADDRESS_NOT_FOUND));
+
+        if(!address.getMember().getId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.ADDRESS_ACCESS_DENIED);
+        }
         return AddressResponse.from(address);
     }
 
     @Transactional
     @Override
     public AddressResponse registerAddress(Long memberId, AddressRequest addressRequest) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
-        if (member.getAddresses().size() > 10) {
-            throw new RuntimeException("주소는 최대 10개까지만 등록할 수 있습니다");
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (member.getAddresses().size() >= 10) {
+            throw new BusinessException(ErrorCode.MAX_ADDRESS_LIMIT_EXCEEDED);
         }
 
         Address address = Address.builder()
@@ -79,8 +92,13 @@ public class AddressServiceImpl implements AddressService {
     @Transactional
     @Override
     public AddressResponse modifyAddress(Long memberId, Long addressId, AddressRequest addressRequest) {
-        Address address = addressRepository.findById(addressId).orElseThrow(() -> new RuntimeException("존재하지 않는 주소 조회"));
-        if(!address.getMember().getId().equals(memberId)) throw new RuntimeException("사용자의 주소에 대한 요청이 이닙니다");
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADDRESS_NOT_FOUND));
+
+        if(!address.getMember().getId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.ADDRESS_ACCESS_DENIED);
+        }
+
         address.setAlias(addressRequest.getAlias());
         address.setRoadAddress(addressRequest.getRoadAddress());
         address.setDetailAddress(addressRequest.getDetailAddress());
@@ -90,26 +108,34 @@ public class AddressServiceImpl implements AddressService {
     @Transactional
     @Override
     public void removeAddress(Long memberId, Long addressId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
-        Address address = addressRepository.findById(addressId).orElseThrow(() -> new RuntimeException("존재하지 않는 주소 조회"));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADDRESS_NOT_FOUND));
 
-        if(address.getMember().getId().equals(memberId)) {
-            if(member.getDefaultAddressId().equals(addressId)) {
-                member.setDefaultAddressId(null);
-            }
-            addressRepository.deleteById(addressId);
+        if(!address.getMember().getId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.ADDRESS_ACCESS_DENIED);
         }
+
+        if(member.getDefaultAddressId() != null && member.getDefaultAddressId().equals(addressId)) {
+            member.setDefaultAddressId(null);
+        }
+        addressRepository.deleteById(addressId);
     }
 
     @Transactional
     @Override
     public AddressResponse setDefaultAddress(Long memberId, Long addressId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
-        Address address = addressRepository.findById(addressId).orElseThrow(() -> new RuntimeException("존재하지 않는 주소 조회"));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADDRESS_NOT_FOUND));
 
-        if (address.getMember().getId().equals(memberId)) {
-            member.setDefaultAddressId(addressId);
-        } else throw new RuntimeException("해당 멤버의 주소가 아닙니다");
+        if (!address.getMember().getId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.ADDRESS_ACCESS_DENIED);
+        }
+
+        member.setDefaultAddressId(addressId);
         return AddressResponse.from(address);
     }
 }

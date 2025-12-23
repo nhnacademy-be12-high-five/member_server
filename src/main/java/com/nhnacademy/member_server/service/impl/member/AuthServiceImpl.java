@@ -25,7 +25,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -55,18 +54,24 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public TokenDto loginUser(String loginId, String password) {
+        Member dbMember = memberRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
+
+        if (!passwordEncoder.matches(password, dbMember.getPassword())) {
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        }
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginId, password)
         );
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Member inputMember =  userDetails.getMember();
-        Member dbMember = memberRepository.findById(inputMember.getId()).orElseThrow(() -> new RuntimeException("존재하지 않는 회원"));
 
         dbMember.setLastLoginAt(LocalDateTime.now());
 
-        Long memberId = userDetails.getMember().getId();
-        Role role = userDetails.getMember().getRole();
+        Long memberId = inputMember.getId();
+        Role role = inputMember.getRole();
 
         boolean isProfileComplete = dbMember.isProfileComplete();
 
@@ -89,17 +94,16 @@ public class AuthServiceImpl implements AuthService {
         String safeLoginId = request.getLoginId().trim();
         String safeName = request.getName().trim();
         String safeEmail = request.getEmail().trim();
-
         String rawPhone = request.getPhone().replaceAll("[^0-9]", "");
 
         if (memberRepository.existsByLoginId(safeLoginId)) {
-            throw new RuntimeException("이미 존재하는 아이디입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
         else if (memberRepository.existsByEmail(safeEmail)) {
-            throw new RuntimeException("이미 존재하는 이메일입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
         else if (memberRepository.existsByPhone(rawPhone)) {
-            throw new RuntimeException("이미 존재하는 번호입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
         }
 
         Grade basicGrade = gradeRepository.findByGradeName("GENERAL")
@@ -129,37 +133,36 @@ public class AuthServiceImpl implements AuthService {
                 .isProfileComplete(true)
                 .build();
 
-            Member savedMember = memberRepository.save(member);
+        Member savedMember = memberRepository.save(member);
 
-            try {
-                CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
-                rabbitTemplate.convertAndSend("high-five-coupon-welcome-queue", message);
-                log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
-            } catch (Exception e) {
-                log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
-            }
+        try {
+            CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
+            rabbitTemplate.convertAndSend("high-five-coupon-welcome-queue", message);
+            log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
+        } catch (Exception e) {
+            log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
+        }
     }
 
     @Override
     @Transactional
     public TokenDto reissue(String refreshToken) {
-
         if (!jwtUtil.validateToken(refreshToken)) {
-            throw new RuntimeException("유효하지 않은 Refresh Token입니다.");
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
         Long memberId = jwtUtil.getUserId(refreshToken);
         String redisToken = redisTemplate.opsForValue().get("RT:" + memberId);
 
         if (redisToken == null || !redisToken.equals(refreshToken)) {
-            throw new RuntimeException("토큰이 만료되었거나 일치하지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         if (member.getStatus().equals(Status.WITHDRAWAL)) {
-            throw new RuntimeException("탈퇴된 회원입니다.");
+            throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
         }
 
         boolean isProfileComplete = member.isProfileComplete();
@@ -195,18 +198,13 @@ public class AuthServiceImpl implements AuthService {
 
         Member member = memberRepository.findByProviderId(providerId).orElseGet(() -> {
             log.info("소셜 신규 회원 감지. 자동 가입 진행: {} / {}", provider, userInfo.getName());
-
-
             return socialSignup(userInfo);
         });
+
         boolean isProfileComplete = member.isProfileComplete();
-        log.info(">>> DB 저장 성공! Member ID: {}, Role: {}", member.getId(), member.getRole());
 
         String accessToken = jwtUtil.createAccessToken(member.getId(), member.getRole());
-        log.info(">>> Access Token 발급 성공");
-
         String refreshToken = jwtUtil.createRefreshToken(member.getId());
-        log.info(">>> Refresh Token 발급 성공");
 
         redisTemplate.opsForValue().set(
                 "RT:" + member.getId(),
@@ -223,7 +221,6 @@ public class AuthServiceImpl implements AuthService {
         String providerId = userInfo.getProviderId();
 
         String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
-
         String uniqueLoginId = provider + "_" + providerId;
 
         Grade basicGrade = gradeRepository.findByGradeName("GENERAL")
@@ -242,8 +239,6 @@ public class AuthServiceImpl implements AuthService {
         Gender gender = Gender.UNKNOWN;
         if ("MALE".equals(userInfo.getGender())) gender = Gender.MALE;
         else if ("FEMALE".equals(userInfo.getGender())) gender = Gender.FEMALE;
-
-        log.info(">>> 생일 : {}", userInfo.getBirthday());
 
         java.time.LocalDate birthDate = java.time.LocalDate.of(1000, 1, 1);
         String rawBirth = userInfo.getBirthday();
@@ -290,19 +285,19 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return savedMember;
-
     }
+
 
     @Override
     public String findLoginIdByEmail(String email, String code) {
         boolean isVerified = emailService.verifyCode(email, code, EmailType.FIND_ID);
 
         if (!isVerified) {
-            throw new IllegalArgumentException("인증번호가 일치하지 않거나 만료되었습니다.");
+            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
         Member member = memberRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("해당 이메일로 가입된 회원이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         return maskLoginId(member.getLoginId());
     }
@@ -320,20 +315,21 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
-        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
+        Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        member.setPassword(passwordEncoder.encode(newPassword));
+        if (loginId != null && !loginId.isBlank() && !member.getLoginId().equals(loginId)) {
+            throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
+        }
 
+        member.setPassword(passwordEncoder.encode(newPassword));
         memberRepository.save(member);
     }
 
-
     private String maskLoginId(String loginId) {
         if (loginId == null || loginId.length() < 3) {
-            return loginId; // 너무 짧으면 그대로 노출하거나 처리하지 않음
+            return loginId;
         }
         return loginId.substring(0, 2) + "*".repeat(loginId.length() - 2);
     }
-
 }
