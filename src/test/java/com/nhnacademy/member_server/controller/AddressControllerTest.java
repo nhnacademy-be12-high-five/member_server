@@ -103,12 +103,18 @@ class AddressControllerTest {
         Long memberId = 1L;
         AddressRequest request = AddressRequest.builder()
                 .alias("새 배송지")
+                .recipient("홍길동")
+                .phone("010-1111-2222")
+                .zipCode("12345")
                 .roadAddress("부산시 해운대구")
                 .detailAddress("101동")
+                .defaultAddress(false)
                 .build();
 
         AddressResponse response = AddressResponse.builder()
+                .addressId(1L)
                 .alias("새 배송지")
+                .recipient("홍길동")
                 .roadAddress("부산시 해운대구")
                 .build();
 
@@ -120,7 +126,8 @@ class AddressControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.alias").value("새 배송지"));
+                .andExpect(jsonPath("$.alias").value("새 배송지"))
+                .andExpect(jsonPath("$.recipient").value("홍길동"));
     }
 
     @Test
@@ -139,30 +146,38 @@ class AddressControllerTest {
     }
 
     @Test
-    @DisplayName("배송지 수정 (PATCH /api/address/{address-id})")
+    @DisplayName("배송지 수정 (PUT /api/address/{address-id})")
     void updateAddressSuccess() throws Exception {
         Long memberId = 1L;
         Long addressId = 30L;
         AddressRequest request = AddressRequest.builder()
                 .alias("이사 간 집")
+                .recipient("이순신")
+                .phone("010-9999-8888")
+                .zipCode("54321")
                 .roadAddress("광주시")
                 .detailAddress("505호")
+                .defaultAddress(true)
                 .build();
 
         AddressResponse response = AddressResponse.builder()
+                .addressId(addressId)
                 .alias("이사 간 집")
+                .recipient("이순신")
                 .roadAddress("광주시")
+                .isDefault(true)
                 .build();
 
         given(addressService.modifyAddress(eq(memberId), eq(addressId), any(AddressRequest.class)))
                 .willReturn(response);
 
-        mockMvc.perform(patch("/api/address/{address-id}", addressId)
+        mockMvc.perform(put("/api/address/{address-id}", addressId)
                         .header("X-User-ID", memberId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.alias").value("이사 간 집"));
+                .andExpect(jsonPath("$.alias").value("이사 간 집"))
+                .andExpect(jsonPath("$.isDefault").value(true));
     }
 
     @Test
