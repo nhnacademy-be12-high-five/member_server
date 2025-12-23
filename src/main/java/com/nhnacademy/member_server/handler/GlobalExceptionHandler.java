@@ -72,16 +72,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalStateException(IllegalStateException e) {
-        // 409 Conflict: 중복된 데이터가 있을 때 주로 씀
-        // e.getMessage()에는 "이미 가입된 이메일입니다"가 들어있음
-        return ResponseEntity.status(409).body(e.getMessage());
+    public ResponseEntity<ErrorResponse> handleIllegalStateException(IllegalStateException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("C409", e.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {
-        // 400 Bad Request
-        return ResponseEntity.status(400).body(e.getMessage());
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("C400", e.getMessage()));
     }
 
     public record ErrorResponse(String code, String message){}
