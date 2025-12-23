@@ -29,7 +29,7 @@ public class PointInternalController implements PointInternalSwagger {
     }
 
     @Override
-    @PostMapping("/use")
+    @PostMapping("/use") // 현재 사용처는 없지만 추후 포인트로만 결제 기능 등에 확장성 여지 있음
     public ResponseEntity<PointTransactionResponse> usePoint(@RequestBody PointTransactionRequest requestDto){
 
         PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), pointService.usePoint(requestDto));
