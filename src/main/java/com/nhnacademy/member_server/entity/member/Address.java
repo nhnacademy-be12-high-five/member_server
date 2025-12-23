@@ -33,6 +33,19 @@ public class Address {
     private String alias;
 
     @Setter
+    @Column(length = 50)
+    private String recipient;
+
+    @Setter
+    @Column(length = 20)
+    private String phone;
+
+
+    @Setter
+    @Column(name = "zip_code", length = 10)
+    private String zipCode;
+
+    @Setter
     @Column(name = "road_address", length = 255)
     private String roadAddress;
 
