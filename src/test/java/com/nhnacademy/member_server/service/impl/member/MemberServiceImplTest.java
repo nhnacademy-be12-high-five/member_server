@@ -6,6 +6,8 @@ import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.entity.member.Status;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,11 +64,13 @@ class MemberServiceImplTest {
                 .email("duplicate@test.com").build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+        // Mock the repository to return true for existence check
         given(memberRepository.existsByEmail("duplicate@test.com")).willReturn(true);
 
         assertThatThrownBy(() -> memberService.updateMember(memberId, request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("이미 사용 중인 이메일");
+                .isInstanceOf(BusinessException.class) // Expect BusinessException
+                .extracting("errorCode") // Extract the errorCode field
+                .isEqualTo(ErrorCode.DUPLICATE_EMAIL); // Verify it matches DUPLICATE_EMAIL
     }
 
     @Test
