@@ -6,12 +6,15 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum EmailType {
-    SIGNUP("EMAIL_CHECK:", true),
-    
-    RESET_PASSWORD("PW_EMAIL_CHECK:", false),
+    SIGNUP("EMAIL_CHECK:", true, false),
 
-    FIND_ID("ID_EMAIL_CHECK:", false);
+    RESET_PASSWORD("PW_EMAIL_CHECK:", false, true),
+
+    FIND_ID("ID_EMAIL_CHECK:", false, true),
+
+    ACTIVATE("ACTIVATE:", false, true);
 
     private final String prefix;
     private final boolean checkDuplication;
+    private final boolean checkExistence;
 }

@@ -57,6 +57,12 @@ public class AuthServiceImpl implements AuthService {
         Member dbMember = memberRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
 
+        if (dbMember.getStatus() == Status.DORMANT) {throw new BusinessException(ErrorCode.MEMBER_DORMANT);
+        }
+        if (dbMember.getStatus() == Status.WITHDRAWAL) {
+            throw new BusinessException(ErrorCode.MEMBER_WITHDRAWN);
+        }
+
         if (!passwordEncoder.matches(password, dbMember.getPassword())) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
@@ -327,9 +333,20 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String maskLoginId(String loginId) {
-        if (loginId == null || loginId.length() < 3) {
+        if (loginId == null) {
+            return null;
+        }
+
+        int len = loginId.length();
+
+        if (len < 2) {
             return loginId;
         }
-        return loginId.substring(0, 2) + "*".repeat(loginId.length() - 2);
+
+        if (len == 2) {
+            return loginId.substring(0, 1) + "*";
+        }
+
+        return loginId.substring(0, 2) + "*".repeat(len - 2);
     }
 }

@@ -1,11 +1,16 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.dto.request.member.DormantRequest;
 import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.member.MemberResponse;
 import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
+import com.nhnacademy.member_server.entity.member.EmailType;
 import com.nhnacademy.member_server.entity.member.Role;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.service.member.AuthService;
+import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.service.member.MemberService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,7 +26,7 @@ public class MemberController {
 
     private final MemberService memberService;
     private final AuthService authService;
-
+    private final EmailService emailService;
 
     @GetMapping("/me")
     public ResponseEntity<MemberResponse> getMember(@RequestHeader(name = "X-User-ID") Long memberId){
@@ -68,5 +73,22 @@ public class MemberController {
     public ResponseEntity<List<SimpleMemberResponse>> getMembersInfo(@RequestBody List<Long> memberIds) {
         List<SimpleMemberResponse> responseList = memberService.getMembersInfo(memberIds);
         return ResponseEntity.ok(responseList);
+    }
+
+    @PostMapping("/open/dormant/check")
+    public ResponseEntity<Boolean> checkDormant(@RequestBody DormantRequest request) {
+        memberService.checkDormantMember(request.getLoginId(), request.getEmail());
+        return ResponseEntity.ok(true);
+    }
+
+    @PostMapping("/open/dormant/activate")
+    public ResponseEntity<Void> activateDormant(@RequestBody @Valid DormantRequest request) {
+        boolean isVerified = emailService.verifyCode(request.getEmail(), request.getAuthCode(), EmailType.ACTIVATE);
+        if (!isVerified) {
+            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
+        }
+
+        memberService.activateDormantMember(request.getLoginId(), request.getEmail());
+        return ResponseEntity.ok().build();
     }
 }

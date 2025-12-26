@@ -58,6 +58,9 @@ public enum ErrorCode {
     DUPLICATE_PHONE(HttpStatus.CONFLICT, "M012", "이미 존재하는 번호입니다."),
     BIRTHDATE_CANNOT_CHANGE(HttpStatus.BAD_REQUEST, "M020", "생년월일은 가입 완료 후 변경할 수 없습니다."),
     AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "M004", "인증번호가 만료되거나 일치하지 않습니다."),
+    MEMBER_DORMANT(HttpStatus.FORBIDDEN, "M005", "휴면 계정입니다. 본인 인증 후 해제해주세요."),
+    MEMBER_WITHDRAWN(HttpStatus.FORBIDDEN, "M006", "탈퇴한 계정입니다."),
+    MEMBER_NOT_DORMANT(HttpStatus.BAD_REQUEST, "M013", "해당 계정은 휴면 상태가 아닙니다."),
 
     // [Email]
     MAIL_SEND_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E001", "메일 발송 중 오류가 발생했습니다.");
