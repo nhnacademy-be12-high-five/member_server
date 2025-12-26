@@ -50,15 +50,30 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public boolean verifyCode(String email, String inputCode, EmailType type) {
-        if (email == null || inputCode == null) return false;
+        // [로그] 입력값 확인 (대괄호로 공백 체크)
+        log.info("==== [VerifyCode] 인증 검증 시작 ====");
+        log.info("입력 Email: [{}], Type: [{}]", email, type);
+        log.info("입력 Code : [{}]", inputCode);
+
+        if (email == null || inputCode == null) {
+            log.warn("검증 실패: 이메일 또는 입력 코드가 NULL입니다.");
+            return false;
+        }
 
         String key = type.getPrefix() + email;
         String storedCode = redisTemplate.opsForValue().get(key);
 
+        // [로그] Redis 실제 조회값 확인
+        log.info("생성된 Redis Key: [{}]", key);
+        log.info("Redis 저장된 값 : [{}]", storedCode);
+
         if (storedCode != null && storedCode.equals(inputCode)) {
             redisTemplate.delete(key);
+            log.info("인증 성공! (Redis 키 삭제 완료)");
             return true;
         }
+
+        log.warn("인증 실패: 저장된 값과 입력값이 일치하지 않거나 만료됨.");
         return false;
     }
 

@@ -143,25 +143,34 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public void activateDormantMember(String loginId, String email) {
+        log.info("==== [ActivateDormant] 휴면 해제 로직 진입 ====");
+        log.info("요청 LoginId: [{}], Email: [{}]", loginId, email);
 
         Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.error("실패: DB에서 회원을 찾을 수 없음 (LoginId: {}, Email: {})", loginId, email);
+                    return new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
+                });
+
+        log.info("회원 조회 성공. 현재 상태: [{}]", member.getStatus());
 
         if (member.getStatus() == Status.WITHDRAWAL) {
+            log.warn("실패: 탈퇴(WITHDRAWAL) 상태인 회원입니다.");
             throw new BusinessException(ErrorCode.MEMBER_WITHDRAWN);
         }
 
         if (member.getStatus() == Status.ACTIVE) {
+            log.info("ℹ이미 활성(ACTIVE) 상태입니다. 로직을 종료합니다.");
             return;
         }
 
         if (member.getStatus() != Status.DORMANT) {
+            log.warn("실패: 휴면(DORMANT) 상태가 아닙니다. 현재 상태: {}", member.getStatus());
             throw new BusinessException(ErrorCode.MEMBER_NOT_DORMANT);
         }
 
         member.setStatus(Status.ACTIVE);
         member.setLastLoginAt(LocalDateTime.now());
-        log.info("휴면 해제 완료 (LoginId: {})", loginId);
+        log.info("휴면 해제 최종 완료 (LoginId: {})", loginId);
     }
-
 }
