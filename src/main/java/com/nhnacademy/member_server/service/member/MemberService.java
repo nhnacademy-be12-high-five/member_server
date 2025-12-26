@@ -22,5 +22,5 @@ public interface MemberService {
 
     void checkDormantMember(String loginId, String email);
 
-    void activateMemberByLoginId(String loginId);
+    void activateDormantMember(String loginId, String email);
 }

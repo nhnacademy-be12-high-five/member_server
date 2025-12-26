@@ -142,15 +142,26 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     @Transactional
-    public void activateMemberByLoginId(String loginId) {
-        Member member = memberRepository.findByLoginId(loginId)
+    public void activateDormantMember(String loginId, String email) {
+
+        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        if (member.getStatus() == Status.ACTIVE) return;
+        if (member.getStatus() == Status.WITHDRAWAL) {
+            throw new BusinessException(ErrorCode.MEMBER_WITHDRAWN);
+        }
+
+        if (member.getStatus() == Status.ACTIVE) {
+            return;
+        }
+
+        if (member.getStatus() != Status.DORMANT) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
 
         member.setStatus(Status.ACTIVE);
         member.setLastLoginAt(LocalDateTime.now());
-        log.info("휴면 해제 완료 (LoginId): {}", loginId);
+        log.info("휴면 해제 완료 (LoginId: {})", loginId);
     }
 
 }
