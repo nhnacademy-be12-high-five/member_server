@@ -45,4 +45,12 @@ public class PointInternalController implements PointInternalSwagger {
 
         return ResponseEntity.ok(responseDto);
     }
+
+    @PostMapping("/return-revert")
+    public ResponseEntity<PointTransactionResponse> revertPointForReturn(@RequestBody PointTransactionRequest requestDto){
+        // 반품 전용 메서드 호출 (반품 복구로 기록됨)
+        Long updatedBalance = pointService.revertUsePointForReturn(requestDto);
+        PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), updatedBalance);
+        return ResponseEntity.ok(responseDto);
+    }
 }

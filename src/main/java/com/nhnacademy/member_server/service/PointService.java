@@ -23,4 +23,6 @@ public interface PointService {
     void reservePoint(Long memberId, Long amount, Long orderId);
     void confirmPoint(Long memberId, Long amount, Long orderId);
     void cancelPoint(Long memberId, Long amount, Long orderId);
+    void deductPoint(Long memberId, Long amount, Long orderId);
+    Long revertUsePointForReturn(PointTransactionRequest requestDto);
 }
