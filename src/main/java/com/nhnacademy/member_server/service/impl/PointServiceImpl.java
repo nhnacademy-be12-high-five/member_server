@@ -45,28 +45,22 @@ public class PointServiceImpl implements PointService {
     public Long earnPoint(PointEarnRequest requestDto){
         Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
         long pointToEarn;
-        String description = requestDto.getEventType().getDescription();
+        PointEventType eventType = requestDto.getEventType();
         Long orderIdToSave = null;
 
         switch (requestDto.getEventType()){
             // 상품 구매 시 등급별 비율 적용 적립
             case EARN_ORDER -> {
                 validateOrderRequest(requestDto);
-
                 BigDecimal rate = member.getGrade().getPointRate();
-                pointToEarn = BigDecimal.valueOf(requestDto.getPureAmount())
-                        .multiply(rate)
-                        .longValue();
+                pointToEarn = BigDecimal.valueOf(requestDto.getPureAmount()).multiply(rate).longValue();
                 orderIdToSave = requestDto.getOrderId();
-                description = String.format("%s (주문번호: %d)", description, requestDto.getOrderId());
             }
             // 상품 반품으로 인한 포인트 적립
             case EARN_REFUND -> {
                 validateOrderRequest(requestDto);
-
                 pointToEarn = requestDto.getPureAmount();
                 orderIdToSave = requestDto.getOrderId();
-                description = String.format("%s (주문번호: %d)", description, orderIdToSave);
             }
             default -> {
                 PointPolicy policy = pointPolicyRepository.findTopByOrderByUpdatedAtDesc();
@@ -78,20 +72,19 @@ public class PointServiceImpl implements PointService {
                     case EARN_REVIEW -> policy.getReviewPoint();
                     case EARN_PHOTO_REVIEW -> policy.getPhotoPoint();
                     case EARN_SIGNUP -> policy.getSignupPoint();
-                    case EARN_REVIEW_UPGRADE -> {
-                        long diff = policy.getPhotoPoint() - policy.getReviewPoint();
-                        // 혹시 정책 변경으로 일반리뷰가 더 비싸지거나 같아지면 0원
-                        yield Math.max(diff, 0L);
-                    }
+                    case EARN_REVIEW_UPGRADE -> Math.max(policy.getPhotoPoint() - policy.getReviewPoint(), 0L);
                     default -> 0L;
                 };
             }
         }
 
-        // 실제 적립 로직
         if (pointToEarn > 0) {
             long newPointBalance = member.getCurrentPoint() + pointToEarn;
             member.setCurrentPoint(newPointBalance);
+
+            String description = (orderIdToSave != null)
+                    ? formatDescription(eventType, orderIdToSave)
+                    : eventType.getDescription();
 
             pointHistoryRepository.save(new PointHistory(
                     orderIdToSave,
@@ -112,58 +105,38 @@ public class PointServiceImpl implements PointService {
         return processUsePoint(requestDto, PointStatus.CONFIRMED);
     }
 
+    // 주문 취소 복구
     @Override
     public Long revertPoint(PointTransactionRequest requestDto){
-        validateTransactionRequest(requestDto);
-
-        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId()).orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-
-        long amountRevertedPoint = requestDto.getAmount();
-
-        // 잔액 환불
-        long newPointBalance = member.getCurrentPoint() + amountRevertedPoint;
-        member.setCurrentPoint(newPointBalance);
-
-        // 주문 취소(Cancel)로 인한 포인트 복구 (배송 전)
-        String description = String.format("%s (주문번호: %d)",PointEventType.USE_CANCEL_ORDER.getDescription(), requestDto.getOrderId());
-
-        pointHistoryRepository.save(new PointHistory(
-                requestDto.getOrderId(),
-                member,
-                amountRevertedPoint,
-                description,
-                PointEventType.USE_CANCEL_ORDER,
-                newPointBalance,
-                PointStatus.CONFIRMED
-        ));
-        return newPointBalance;
+        return processRevertPoint(requestDto, PointEventType.USE_CANCEL_ORDER);
     }
 
+    // 반품 복구
     @Override
     public Long revertUsePointForReturn(PointTransactionRequest requestDto) {
-        validateTransactionRequest(requestDto);
+        return processRevertPoint(requestDto, PointEventType.USE_CANCEL_RETURN);
+    }
 
+    // 공통 복구 로직
+    private Long processRevertPoint(PointTransactionRequest requestDto, PointEventType eventType) {
+        validateTransactionRequest(requestDto);
         Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId())
                 .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
-        long amountRevertedPoint = requestDto.getAmount();
-        long newPointBalance = member.getCurrentPoint() + amountRevertedPoint;
-        member.setCurrentPoint(newPointBalance);
-
-        // 반품(Return) 시 사용 포인트 복구 (배송 후)
-        PointEventType eventType = PointEventType.USE_CANCEL_RETURN;
-        String description = String.format("%s (주문번호: %d)", eventType.getDescription(), requestDto.getOrderId());
+        long amount = requestDto.getAmount();
+        long newBalance = member.getCurrentPoint() + amount;
+        member.setCurrentPoint(newBalance);
 
         pointHistoryRepository.save(new PointHistory(
                 requestDto.getOrderId(),
                 member,
-                amountRevertedPoint,
-                description,
+                amount,
+                formatDescription(eventType, requestDto.getOrderId()),
                 eventType,
-                newPointBalance,
+                newBalance,
                 PointStatus.CONFIRMED
         ));
-        return newPointBalance;
+        return newBalance;
     }
 
 
@@ -373,6 +346,11 @@ public class PointServiceImpl implements PointService {
         ));
 
         return newPointBalance;
+    }
+
+    // 헬퍼 메서드 (설명 포맷 생성)
+    private String formatDescription(PointEventType type, Long orderId) {
+        return String.format("%s (주문번호: %d)", type.getDescription(), orderId);
     }
 
     // 검증 메서드
