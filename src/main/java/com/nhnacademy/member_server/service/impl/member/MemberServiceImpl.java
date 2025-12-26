@@ -136,7 +136,7 @@ public class MemberServiceImpl implements MemberService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         if (member.getStatus() != Status.DORMANT) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ErrorCode.MEMBER_NOT_DORMANT);
         }
     }
 
@@ -156,7 +156,7 @@ public class MemberServiceImpl implements MemberService {
         }
 
         if (member.getStatus() != Status.DORMANT) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ErrorCode.MEMBER_NOT_DORMANT);
         }
 
         member.setStatus(Status.ACTIVE);
