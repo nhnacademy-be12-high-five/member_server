@@ -124,14 +124,42 @@ public class PointServiceImpl implements PointService {
         long newPointBalance = member.getCurrentPoint() + amountRevertedPoint;
         member.setCurrentPoint(newPointBalance);
 
-        String description = String.format("%s (주문번호: %d)",PointEventType.REVERT_ORDER.getDescription(), requestDto.getOrderId());
+        // 주문 취소(Cancel)로 인한 포인트 복구 (배송 전)
+        String description = String.format("%s (주문번호: %d)",PointEventType.USE_CANCEL_ORDER.getDescription(), requestDto.getOrderId());
 
         pointHistoryRepository.save(new PointHistory(
                 requestDto.getOrderId(),
                 member,
                 amountRevertedPoint,
                 description,
-                PointEventType.REVERT_ORDER,
+                PointEventType.USE_CANCEL_ORDER,
+                newPointBalance,
+                PointStatus.CONFIRMED
+        ));
+        return newPointBalance;
+    }
+
+    @Override
+    public Long revertUsePointForReturn(PointTransactionRequest requestDto) {
+        validateTransactionRequest(requestDto);
+
+        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId())
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        long amountRevertedPoint = requestDto.getAmount();
+        long newPointBalance = member.getCurrentPoint() + amountRevertedPoint;
+        member.setCurrentPoint(newPointBalance);
+
+        // 반품(Return) 시 사용 포인트 복구 (배송 후)
+        PointEventType eventType = PointEventType.USE_CANCEL_RETURN;
+        String description = String.format("%s (주문번호: %d)", eventType.getDescription(), requestDto.getOrderId());
+
+        pointHistoryRepository.save(new PointHistory(
+                requestDto.getOrderId(),
+                member,
+                amountRevertedPoint,
+                description,
+                eventType,
                 newPointBalance,
                 PointStatus.CONFIRMED
         ));
@@ -289,6 +317,32 @@ public class PointServiceImpl implements PointService {
         revertPoint(request);
 
         log.info("TCC Cancel(환불) 완료: memberId={}, orderId={}", memberId, orderId);
+    }
+
+    @Override
+    public void deductPoint(Long memberId, Long amount, Long orderId) {
+        Member member = memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        if (amount <= 0) {
+            throw new BusinessException(INVALID_INPUT_VALUE);
+        }
+
+        long newBalance = member.getCurrentPoint() - amount;
+        member.setCurrentPoint(newBalance);
+
+        PointEventType eventType = PointEventType.EARN_CANCEL_RETURN;
+        String description = "반품으로 인한 적립금 회수";
+
+        pointHistoryRepository.save(new PointHistory(
+                orderId,
+                member,
+                -amount,
+                description,
+                eventType,
+                newBalance,
+                PointStatus.CONFIRMED
+        ));
     }
 
     private Long processUsePoint(PointTransactionRequest requestDto, PointStatus status) {
