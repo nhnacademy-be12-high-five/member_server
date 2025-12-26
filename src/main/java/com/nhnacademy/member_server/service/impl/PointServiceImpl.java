@@ -59,6 +59,12 @@ public class PointServiceImpl implements PointService {
             // 상품 반품으로 인한 포인트 적립
             case EARN_REFUND -> {
                 validateOrderRequest(requestDto);
+                if (pointHistoryRepository.existsByOrderIdAndPointEventType(
+                        requestDto.getOrderId(), PointEventType.EARN_REFUND)) {
+
+                    log.warn("이미 처리된 환불 적립 요청입니다. (중복 방지): orderId={}", requestDto.getOrderId());
+                    return member.getCurrentPoint(); // 적립 안 하고 현재 잔액 리턴
+                }
                 pointToEarn = requestDto.getPureAmount();
                 orderIdToSave = requestDto.getOrderId();
             }
