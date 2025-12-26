@@ -15,6 +15,7 @@ import com.nhnacademy.member_server.service.member.MemberService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
+@Slf4j
 public class MemberController {
 
     private final MemberService memberService;
@@ -83,8 +85,21 @@ public class MemberController {
 
     @PostMapping("/open/dormant/activate")
     public ResponseEntity<Void> activateDormant(@RequestBody @Valid DormantRequest request) {
-        boolean isVerified = emailService.verifyCode(request.getEmail(), request.getAuthCode(), EmailType.ACTIVATE);
+
+        log.info("휴면해제 요청 - ID: [{}], Email: [{}], Code: [{}]",
+                request.getLoginId(), request.getEmail(), request.getAuthCode());
+
+        String rawCode = request.getAuthCode();
+        if (rawCode != null) {
+            rawCode = rawCode.trim();
+        }
+
+        log.info("Trim 적용 후 인증코드: [{}]", rawCode);
+
+        boolean isVerified = emailService.verifyCode(request.getEmail(), rawCode, EmailType.ACTIVATE);
+
         if (!isVerified) {
+            log.warn("인증 실패 - Email: {}, InputCode: [{}]", request.getEmail(), rawCode);
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
