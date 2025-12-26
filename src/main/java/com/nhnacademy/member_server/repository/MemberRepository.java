@@ -1,8 +1,10 @@
 package com.nhnacademy.member_server.repository;
 
 import com.nhnacademy.member_server.entity.member.Member;
+import com.nhnacademy.member_server.entity.member.Status;
 import jakarta.persistence.LockModeType;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +37,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByProviderId(String providerId);
 
     Optional<Member> findByEmail(String email);
+
+    List<Member> findByLastLoginAtBeforeAndStatus(LocalDateTime dateTime, Status status);
 
     Optional<Member> findByLoginIdAndEmail(String loginId, String email);
 }

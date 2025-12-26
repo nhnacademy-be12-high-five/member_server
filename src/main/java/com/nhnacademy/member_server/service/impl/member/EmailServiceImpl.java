@@ -34,17 +34,17 @@ public class EmailServiceImpl implements EmailService {
         if (type.isCheckDuplication() && exists) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
-        if (!type.isCheckDuplication() && !exists) {
+
+        if (type.isCheckExistence() && !exists) {
             throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
         }
 
         String code = createRandomCode();
         String key = type.getPrefix() + email;
 
-        redisTemplate.opsForValue().set(key, code, Duration.ofSeconds(LIMIT_TIME));
+        redisTemplate.opsForValue().set(key, code, Duration.ofMinutes(5));
         log.info("[{}] 인증번호 발송: email={}, key={}", type, email, key);
 
-        // 3. 메일 발송
         sendMail(email, code, type);
     }
 
@@ -75,6 +75,10 @@ public class EmailServiceImpl implements EmailService {
         } else if (type == EmailType.FIND_ID) {
             message.setSubject("[HighFive] 아이디 찾기 인증번호");
             message.setText("아이디 찾기를 위한 인증 번호는 [" + code + "] 입니다.\n타인에게 노출되지 않도록 주의하세요.");
+        }
+        else if (type == EmailType.ACTIVATE) {
+            message.setSubject("[HighFive] 휴면 계정 활성화 인증번호");
+            message.setText("휴면 해제를 위한 인증 번호는 [" + code + "] 입니다.\n3분 내에 입력해 주세요.");
         }
 
         try {

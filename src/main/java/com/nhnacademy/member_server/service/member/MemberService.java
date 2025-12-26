@@ -19,4 +19,8 @@ public interface MemberService {
     void updateRole(Long memberId, Role newRole);
 
     List<SimpleMemberResponse> getMembersInfo(List<Long> memberIds);
+
+    void checkDormantMember(String loginId, String email);
+
+    void activateMemberByLoginId(String loginId);
 }

@@ -11,14 +11,17 @@ import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
@@ -125,4 +128,29 @@ public class MemberServiceImpl implements MemberService {
                         .build())
                 .toList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void checkDormantMember(String loginId, String email) {
+        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (member.getStatus() != Status.DORMANT) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void activateMemberByLoginId(String loginId) {
+        Member member = memberRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (member.getStatus() == Status.ACTIVE) return;
+
+        member.setStatus(Status.ACTIVE);
+        member.setLastLoginAt(LocalDateTime.now());
+        log.info("휴면 해제 완료 (LoginId): {}", loginId);
+    }
+
 }

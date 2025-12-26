@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.dto.request.member.DormantRequest;
 import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.member.MemberResponse;
 import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
@@ -68,5 +69,17 @@ public class MemberController {
     public ResponseEntity<List<SimpleMemberResponse>> getMembersInfo(@RequestBody List<Long> memberIds) {
         List<SimpleMemberResponse> responseList = memberService.getMembersInfo(memberIds);
         return ResponseEntity.ok(responseList);
+    }
+
+    @PostMapping("/open/dormant/check")
+    public ResponseEntity<Boolean> checkDormant(@RequestBody DormantRequest request) {
+        memberService.checkDormantMember(request.getLoginId(), request.getEmail());
+        return ResponseEntity.ok(true);
+    }
+
+    @PostMapping("/open/dormant/activate")
+    public ResponseEntity<Void> activateDormant(@RequestBody DormantRequest request) {
+        memberService.activateMemberByLoginId(request.getLoginId());
+        return ResponseEntity.ok().build();
     }
 }
