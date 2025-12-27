@@ -8,6 +8,7 @@ import com.nhnacademy.member_server.entity.member.Gender;
 import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.AuthService;
+import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.service.member.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class MemberControllerTest {
 
     @MockitoBean
     private MemberRepository memberRepository;
+
+    @MockitoBean
+    private EmailService emailService;
 
     @Test
     @DisplayName("내 정보 조회 (GET /api/members/me)")

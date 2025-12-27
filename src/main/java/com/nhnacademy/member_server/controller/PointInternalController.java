@@ -29,7 +29,7 @@ public class PointInternalController implements PointInternalSwagger {
     }
 
     @Override
-    @PostMapping("/use")
+    @PostMapping("/use") // 현재 사용처는 없지만 추후 포인트로만 결제 기능 등에 확장성 여지 있음
     public ResponseEntity<PointTransactionResponse> usePoint(@RequestBody PointTransactionRequest requestDto){
 
         PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), pointService.usePoint(requestDto));
@@ -43,6 +43,14 @@ public class PointInternalController implements PointInternalSwagger {
 
         PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), pointService.revertPoint(requestDto));
 
+        return ResponseEntity.ok(responseDto);
+    }
+
+    @PostMapping("/return-revert")
+    public ResponseEntity<PointTransactionResponse> revertPointForReturn(@RequestBody PointTransactionRequest requestDto){
+        // 반품 전용 메서드 호출 (반품 복구로 기록됨)
+        Long updatedBalance = pointService.revertUsePointForReturn(requestDto);
+        PointTransactionResponse responseDto = new PointTransactionResponse(requestDto.getMemberId(), updatedBalance);
         return ResponseEntity.ok(responseDto);
     }
 }

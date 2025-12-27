@@ -4,6 +4,8 @@ import com.nhnacademy.member_server.dto.request.member.AddressRequest;
 import com.nhnacademy.member_server.dto.response.member.AddressResponse;
 import com.nhnacademy.member_server.entity.member.Address;
 import com.nhnacademy.member_server.entity.member.Member;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.AddressRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,20 +62,25 @@ class AddressServiceImplTest {
     }
 
     @Test
-    @DisplayName("주소 등록 실패 - 10개 초과")
+    @DisplayName("주소 등록 실패 - 10개 초과(이미 10개인데 하나 더 추가하려는 경우)")
     void registerAddressFail_MaxLimit() {
+        // 1. Given: 이미 주소가 10개 꽉 찬 멤버 준비
         Long memberId = 1L;
-        Member member = Member.builder().id(memberId).addresses(new ArrayList<>()).build();
-
-        for (int i = 0; i < 11; i++) {
-            member.getAddresses().add(new Address());
+        List<Address> addresses = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            addresses.add(new Address());
         }
+        Member member = Member.builder()
+                .id(memberId)
+                .addresses(addresses)
+                .build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> addressService.registerAddress(memberId, AddressRequest.builder().build()))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("10개까지만");
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.MAX_ADDRESS_LIMIT_EXCEEDED);
     }
 
     @Test

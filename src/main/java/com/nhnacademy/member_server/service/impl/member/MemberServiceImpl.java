@@ -11,14 +11,17 @@ import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
@@ -27,65 +30,62 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void withdraw(Long userId) {
         Member member = memberRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         member.setStatus(Status.WITHDRAWAL);
-
     }
 
     @Override
     @Transactional(readOnly = true)
     public MemberResponse getMember(Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
-        MemberResponse memberResponse = MemberResponse.from(member);
-        return memberResponse;
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberResponse.from(member);
     }
 
     @Override
     @Transactional
-    public MemberResponse updateMember(Long memberId, MemberUpdateRequest memberUpdateRequest) {
-        Member member = memberRepository.findById(memberId).orElseThrow(() -> new RuntimeException("존재하지 않는 member 조회"));
+    public MemberResponse updateMember(Long memberId, MemberUpdateRequest req) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        if (memberUpdateRequest.getName() != null && !memberUpdateRequest.getName().isBlank()) {
-            member.setName(memberUpdateRequest.getName());
+        if (req.getName() != null && !req.getName().isBlank()) {
+            member.setName(req.getName());
         }
 
-        if (memberUpdateRequest.getBirthDate() != null) {
-            if (member.isProfileComplete()) {
-                if (!member.getBirthDate().equals(memberUpdateRequest.getBirthDate())) {
-                    throw new IllegalArgumentException("생년월일은 가입 완료 후 변경할 수 없습니다.");
-                }
+        if (req.getBirthDate() != null) {
+            if (member.isProfileComplete() && !member.getBirthDate().equals(req.getBirthDate())) {
+                throw new BusinessException(ErrorCode.BIRTHDATE_CANNOT_CHANGE);
             }
-            member.setBirthDate(memberUpdateRequest.getBirthDate());
+            member.setBirthDate(req.getBirthDate());
         }
 
-        if (memberUpdateRequest.getEmail() != null && !memberUpdateRequest.getEmail().isBlank()) {
-            if (!memberUpdateRequest.getEmail().equals(member.getEmail()) &&
-                    memberRepository.existsByEmail(memberUpdateRequest.getEmail())) {
-                throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        if (req.getEmail() != null && !req.getEmail().isBlank()) {
+            String newEmail = req.getEmail().trim();
+
+            if (!newEmail.equals(member.getEmail()) && memberRepository.existsByEmail(newEmail)) {
+                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
             }
-            member.setEmail(memberUpdateRequest.getEmail());
+            member.setEmail(newEmail);
         }
 
-        if (memberUpdateRequest.getPhone() != null && !memberUpdateRequest.getPhone().isBlank()) {
+        if (req.getPhone() != null && !req.getPhone().isBlank()) {
+            String rawPhone = req.getPhone().replaceAll("[^0-9]", "");
 
-            String rawPhone = memberUpdateRequest.getPhone().replaceAll("[^0-9]", "");
-
-
-            if (!rawPhone.equals(member.getPhone()) &&
-                    memberRepository.existsByPhone(rawPhone)) {
-                throw new IllegalArgumentException("이미 사용 중인 전화번호입니다.");
+            if (!rawPhone.equals(member.getPhone()) && memberRepository.existsByPhone(rawPhone)) {
+                throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
             }
             member.setPhone(rawPhone);
         }
 
-        if (memberUpdateRequest.getGender() != null) {
-            member.setGender(memberUpdateRequest.getGender());
+        if (req.getGender() != null) {
+            member.setGender(req.getGender());
         }
 
         if (!member.isProfileComplete()) {
             java.time.LocalDate defaultDate = java.time.LocalDate.of(1000, 1, 1);
-            if (!member.getBirthDate().equals(defaultDate)) {
+            if (member.getBirthDate() != null && !member.getBirthDate().equals(defaultDate)) {
                 member.setProfileComplete(true);
             }
         }
@@ -97,7 +97,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional(readOnly = true)
     public List<Long> getBirthdayMemberIds(int month) {
         if (month < 1 || month > 12) {
-            throw new RuntimeException("1월에서 12월 사이여야 합니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
         return memberRepository.findAllIdsByBirthMonth(month);
     }
@@ -129,4 +129,48 @@ public class MemberServiceImpl implements MemberService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public void checkDormantMember(String loginId, String email) {
+        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (member.getStatus() != Status.DORMANT) {
+            throw new BusinessException(ErrorCode.MEMBER_NOT_DORMANT);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void activateDormantMember(String loginId, String email) {
+        log.info("==== [ActivateDormant] 휴면 해제 로직 진입 ====");
+        log.info("요청 LoginId: [{}], Email: [{}]", loginId, email);
+
+        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
+                .orElseThrow(() -> {
+                    log.error("실패: DB에서 회원을 찾을 수 없음 (LoginId: {}, Email: {})", loginId, email);
+                    return new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
+                });
+
+        log.info("회원 조회 성공. 현재 상태: [{}]", member.getStatus());
+
+        if (member.getStatus() == Status.WITHDRAWAL) {
+            log.warn("실패: 탈퇴(WITHDRAWAL) 상태인 회원입니다.");
+            throw new BusinessException(ErrorCode.MEMBER_WITHDRAWN);
+        }
+
+        if (member.getStatus() == Status.ACTIVE) {
+            log.info("ℹ이미 활성(ACTIVE) 상태입니다. 로직을 종료합니다.");
+            return;
+        }
+
+        if (member.getStatus() != Status.DORMANT) {
+            log.warn("실패: 휴면(DORMANT) 상태가 아닙니다. 현재 상태: {}", member.getStatus());
+            throw new BusinessException(ErrorCode.MEMBER_NOT_DORMANT);
+        }
+
+        member.setStatus(Status.ACTIVE);
+        member.setLastLoginAt(LocalDateTime.now());
+        log.info("휴면 해제 최종 완료 (LoginId: {})", loginId);
+    }
 }

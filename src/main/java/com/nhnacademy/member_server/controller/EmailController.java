@@ -34,6 +34,12 @@ public class EmailController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/dormant/send")
+    public ResponseEntity<Void> sendDormantCode(@RequestBody EmailRequest request) {
+        emailService.sendVerificationCode(request.getEmail(), EmailType.ACTIVATE);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/verify")
     public ResponseEntity<String> verifyEmail(@RequestBody EmailVerifyRequest request) {
 

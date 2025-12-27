@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.service.impl.member;
 
 import com.nhnacademy.member_server.entity.member.EmailType;
-import com.nhnacademy.member_server.exception.BusinessException;
-import com.nhnacademy.member_server.exception.ErrorCode;
+import com.nhnacademy.member_server.exception.BusinessException; // [필수]
+import com.nhnacademy.member_server.exception.ErrorCode; // [필수]
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,6 @@ public class EmailServiceImpl implements EmailService {
     private final MemberRepository memberRepository;
 
     private static final long LIMIT_TIME = 3 * 60;
-
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Override
@@ -33,33 +32,48 @@ public class EmailServiceImpl implements EmailService {
         boolean exists = memberRepository.existsByEmail(email);
 
         if (type.isCheckDuplication() && exists) {
-            throw new IllegalStateException("이미 가입된 이메일입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
-        if (!type.isCheckDuplication() && !exists) {
+
+        if (type.isCheckExistence() && !exists) {
             throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
         }
 
         String code = createRandomCode();
         String key = type.getPrefix() + email;
 
-        redisTemplate.opsForValue().set(key, code, Duration.ofSeconds(LIMIT_TIME));
+        redisTemplate.opsForValue().set(key, code, Duration.ofMinutes(5));
         log.info("[{}] 인증번호 발송: email={}, key={}", type, email, key);
 
-        // 3. 메일 발송
         sendMail(email, code, type);
     }
 
     @Override
     public boolean verifyCode(String email, String inputCode, EmailType type) {
-        if (email == null || inputCode == null) return false;
+        // [로그] 입력값 확인 (대괄호로 공백 체크)
+        log.info("==== [VerifyCode] 인증 검증 시작 ====");
+        log.info("입력 Email: [{}], Type: [{}]", email, type);
+        log.info("입력 Code : [{}]", inputCode);
+
+        if (email == null || inputCode == null) {
+            log.warn("검증 실패: 이메일 또는 입력 코드가 NULL입니다.");
+            return false;
+        }
 
         String key = type.getPrefix() + email;
         String storedCode = redisTemplate.opsForValue().get(key);
 
+        // [로그] Redis 실제 조회값 확인
+        log.info("생성된 Redis Key: [{}]", key);
+        log.info("Redis 저장된 값 : [{}]", storedCode);
+
         if (storedCode != null && storedCode.equals(inputCode)) {
             redisTemplate.delete(key);
+            log.info("인증 성공! (Redis 키 삭제 완료)");
             return true;
         }
+
+        log.warn("인증 실패: 저장된 값과 입력값이 일치하지 않거나 만료됨.");
         return false;
     }
 
@@ -69,22 +83,24 @@ public class EmailServiceImpl implements EmailService {
 
         if (type == EmailType.SIGNUP) {
             message.setSubject("[HighFive] 회원가입 인증번호");
-            // [수정] 텍스트 변경
             message.setText("회원가입을 위한 인증 번호는 [" + code + "] 입니다.\n3분 내에 입력해 주세요.");
         } else if (type == EmailType.RESET_PASSWORD) {
             message.setSubject("[HighFive] 비밀번호 재설정 인증번호");
-            // [수정] 텍스트 변경
             message.setText("비밀번호 재설정을 위한 인증 번호는 [" + code + "] 입니다.\n타인에게 노출되지 않도록 주의하세요.");
         } else if (type == EmailType.FIND_ID) {
             message.setSubject("[HighFive] 아이디 찾기 인증번호");
             message.setText("아이디 찾기를 위한 인증 번호는 [" + code + "] 입니다.\n타인에게 노출되지 않도록 주의하세요.");
+        }
+        else if (type == EmailType.ACTIVATE) {
+            message.setSubject("[HighFive] 휴면 계정 활성화 인증번호");
+            message.setText("휴면 해제를 위한 인증 번호는 [" + code + "] 입니다.\n3분 내에 입력해 주세요.");
         }
 
         try {
             mailSender.send(message);
         } catch (Exception e) {
             log.error("메일 발송 실패: {}", email, e);
-            throw new RuntimeException("메일 발송 중 오류가 발생했습니다.");
+            throw new BusinessException(ErrorCode.MAIL_SEND_ERROR);
         }
     }
 

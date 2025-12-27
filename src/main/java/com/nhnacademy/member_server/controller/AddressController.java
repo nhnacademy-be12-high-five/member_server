@@ -57,7 +57,7 @@ public class AddressController {
     }
 
     //특정 주소 업데이트
-    @PatchMapping("/{address-id}")
+    @PutMapping("/{address-id}")
     public ResponseEntity<AddressResponse> updateAddress(@RequestHeader(name = "X-User-ID") Long memberId,
                                                          @RequestBody AddressRequest addressRequest,
                                                          @PathVariable("address-id") Long addressId) {

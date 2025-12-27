@@ -1,15 +1,21 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.dto.request.member.DormantRequest;
 import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.member.MemberResponse;
 import com.nhnacademy.member_server.dto.response.member.SimpleMemberResponse;
+import com.nhnacademy.member_server.entity.member.EmailType;
 import com.nhnacademy.member_server.entity.member.Role;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.WebUtils;
 import com.nhnacademy.member_server.service.member.AuthService;
+import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.service.member.MemberService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,11 +23,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
+@Slf4j
 public class MemberController {
 
     private final MemberService memberService;
     private final AuthService authService;
-
+    private final EmailService emailService;
 
     @GetMapping("/me")
     public ResponseEntity<MemberResponse> getMember(@RequestHeader(name = "X-User-ID") Long memberId){
@@ -68,5 +75,35 @@ public class MemberController {
     public ResponseEntity<List<SimpleMemberResponse>> getMembersInfo(@RequestBody List<Long> memberIds) {
         List<SimpleMemberResponse> responseList = memberService.getMembersInfo(memberIds);
         return ResponseEntity.ok(responseList);
+    }
+
+    @PostMapping("/open/dormant/check")
+    public ResponseEntity<Boolean> checkDormant(@RequestBody DormantRequest request) {
+        memberService.checkDormantMember(request.getLoginId(), request.getEmail());
+        return ResponseEntity.ok(true);
+    }
+
+    @PostMapping("/open/dormant/activate")
+    public ResponseEntity<Void> activateDormant(@RequestBody @Valid DormantRequest request) {
+
+        log.info("휴면해제 요청 - ID: [{}], Email: [{}], Code: [{}]",
+                request.getLoginId(), request.getEmail(), request.getAuthCode());
+
+        String rawCode = request.getAuthCode();
+        if (rawCode != null) {
+            rawCode = rawCode.trim();
+        }
+
+        log.info("Trim 적용 후 인증코드: [{}]", rawCode);
+
+        boolean isVerified = emailService.verifyCode(request.getEmail(), rawCode, EmailType.ACTIVATE);
+
+        if (!isVerified) {
+            log.warn("인증 실패 - Email: {}, InputCode: [{}]", request.getEmail(), rawCode);
+            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
+        }
+
+        memberService.activateDormantMember(request.getLoginId(), request.getEmail());
+        return ResponseEntity.ok().build();
     }
 }

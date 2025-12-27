@@ -59,18 +59,21 @@ class AuthServiceImplTest {
     void loginUserSuccess() {
         String loginId = "user";
         String password = "pw";
-        Long memberId = 1L;
-
         Member member = Member.builder()
-                .id(memberId)
+                .id(1L)
                 .loginId(loginId)
+                .password("encodedPw") // Set a password for the member
                 .role(Role.USER)
                 .build();
-
         Authentication authentication = new UsernamePasswordAuthenticationToken(new UserDetailsImpl(member), null);
 
+        // Mock finding the member by loginId (service logic change)
+        given(memberRepository.findByLoginId(loginId)).willReturn(Optional.of(member));
+
+        // Mock password matching (CRITICAL: without this, BusinessException is thrown)
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+
         given(authenticationManager.authenticate(any())).willReturn(authentication);
-        given(memberRepository.findById(any())).willReturn(Optional.of(member));
         given(jwtUtil.createAccessToken(any(), any())).willReturn("access-token");
         given(jwtUtil.createRefreshToken(any())).willReturn("refresh-token");
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
@@ -88,7 +91,7 @@ class AuthServiceImplTest {
         verify(eventPublisher).publishEvent(eventCaptor.capture());
 
         MemberLoginEvent capturedEvent = eventCaptor.getValue();
-        assertThat(capturedEvent.getMemberId()).isEqualTo(memberId);
+        assertThat(capturedEvent.getMemberId()).isEqualTo(member.getId());
     }
 
     @Test
