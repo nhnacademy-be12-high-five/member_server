@@ -1,6 +1,5 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.service.PointService;
 import lombok.RequiredArgsConstructor;
@@ -46,18 +45,12 @@ public class PointTccController {
     // 적립 포인트 회수 (반품 시 구매 확정으로 받은 포인트를 뺏음)
     @PostMapping("/{memberId}/point-deduct")
     public void deductPoint(@PathVariable("memberId") Long memberId,
-                            @RequestParam("amount") Integer amount) {
+                            @RequestParam("amount") Integer amount,
+                            @RequestParam(value = "orderId", required = false) Long orderId) {
 
         log.info("반품 적립 회수 요청: memberId={}, amount={}", memberId, amount);
 
-        // amount가 양수로 들어오므로 음수로 변환하여 차감 요청
-        // PointServiceImpl.adjustmentMemberPoint 가 음수면 USE_ADMIN으로 처리함
-        PointAdminAdjustmentRequest request = new PointAdminAdjustmentRequest(
-                memberId,
-                (long) -amount,
-                "반품으로 인한 적립 취소" // 이력에 남을 사유
-        );
-        pointService.adjustmentMemberPoint(request);
+        pointService.deductPoint(memberId, (long) amount, orderId);
     }
 
 
@@ -75,6 +68,6 @@ public class PointTccController {
                 (long) amount,
                 orderId
         );
-        pointService.revertPoint(request);
+        pointService.revertUsePointForReturn(request);
     }
 }

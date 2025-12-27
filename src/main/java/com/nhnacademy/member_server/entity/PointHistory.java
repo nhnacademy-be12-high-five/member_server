@@ -50,7 +50,7 @@ public class PointHistory {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, name = "point_event_type", length = 50)
     private PointEventType pointEventType;
 
     @Column(nullable = false)
