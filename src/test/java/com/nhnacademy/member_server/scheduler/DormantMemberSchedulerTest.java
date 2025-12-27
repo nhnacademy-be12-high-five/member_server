@@ -21,7 +21,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@ActiveProfiles("dormant-test")
+@ActiveProfiles({"dormant-test", "test"})
 @Transactional
 class DormantMemberSchedulerTest {
 
