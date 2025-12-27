@@ -86,20 +86,14 @@ public class MemberController {
     @PostMapping("/open/dormant/activate")
     public ResponseEntity<Void> activateDormant(@RequestBody @Valid DormantRequest request) {
 
-        log.info("휴면해제 요청 - ID: [{}], Email: [{}], Code: [{}]",
-                request.getLoginId(), request.getEmail(), request.getAuthCode());
-
         String rawCode = request.getAuthCode();
         if (rawCode != null) {
             rawCode = rawCode.trim();
         }
 
-        log.info("Trim 적용 후 인증코드: [{}]", rawCode);
-
         boolean isVerified = emailService.verifyCode(request.getEmail(), rawCode, EmailType.ACTIVATE);
 
         if (!isVerified) {
-            log.warn("인증 실패 - Email: {}, InputCode: [{}]", request.getEmail(), rawCode);
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
