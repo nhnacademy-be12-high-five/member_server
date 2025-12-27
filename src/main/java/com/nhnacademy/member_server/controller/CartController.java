@@ -57,8 +57,18 @@ public class CartController{
     // 장바구니 비우기
     @DeleteMapping("/items")
     public ResponseEntity<Void> deleteAllCartItem(@CookieValue(value = "guestCookie", required = false) String guestId,
-                                                  @RequestHeader(name = "X-USER-ID", required = false) Long memberId){
-        cartService.deleteAllCartItem(memberId, guestId);
+                                                  @RequestHeader(name = "X-USER-ID", required = false) Long memberId,
+                                                  boolean isOrder){
+        cartService.deleteAllCartItem(memberId, guestId, isOrder);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // 주문 완료 후 비우기 (DB 삭제)
+    @DeleteMapping("/items/immediately")
+    public ResponseEntity<Void> clearCartForOrder(@RequestHeader(name = "X-USER-ID", required = false) Long memberId) {
+
+        cartService.deleteAllCartItemForOrder(memberId);
 
         return ResponseEntity.noContent().build();
     }

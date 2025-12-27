@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.service.impl.member;
 
+import com.nhnacademy.member_server.dto.event.MemberLoginEvent;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.entity.member.Gender;
@@ -14,10 +15,12 @@ import com.nhnacademy.member_server.security.UserDetailsImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -49,13 +52,21 @@ class AuthServiceImplTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private GradeRepository gradeRepository;
     @Mock private RabbitTemplate rabbitTemplate;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @Test
-    @DisplayName("로그인 성공 및 Redis 저장")
+    @DisplayName("로그인 성공: 토큰 발급, Redis 저장 및 로그인 이벤트 발행 확인")
     void loginUserSuccess() {
         String loginId = "user";
         String password = "pw";
-        Member member = Member.builder().id(1L).loginId(loginId).role(Role.USER).build();
+        Long memberId = 1L;
+
+        Member member = Member.builder()
+                .id(memberId)
+                .loginId(loginId)
+                .role(Role.USER)
+                .build();
+
         Authentication authentication = new UsernamePasswordAuthenticationToken(new UserDetailsImpl(member), null);
 
         given(authenticationManager.authenticate(any())).willReturn(authentication);
@@ -69,7 +80,15 @@ class AuthServiceImplTest {
         TokenDto result = authService.loginUser(loginId, password);
 
         assertThat(result.getAccessToken()).isEqualTo("access-token");
+
         verify(redisTemplate.opsForValue()).set(anyString(), anyString(), anyLong(), any());
+
+        ArgumentCaptor<MemberLoginEvent> eventCaptor = ArgumentCaptor.forClass(MemberLoginEvent.class);
+
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+        MemberLoginEvent capturedEvent = eventCaptor.getValue();
+        assertThat(capturedEvent.getMemberId()).isEqualTo(memberId);
     }
 
     @Test

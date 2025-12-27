@@ -11,6 +11,7 @@ public enum ErrorCode {
     // C는 공통 오류, CT는 카트 오류, A는 권한 오류, B는 책 오류, EXT는 책 서버 오류
 
     // Common
+    DATABASE_ERROR(HttpStatus.FORBIDDEN, "C000" , "DB 오류입니다."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "C001", "잘못된 입력값입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST,"C003" ,"요청 방식이 잘못됐습니다." ),
