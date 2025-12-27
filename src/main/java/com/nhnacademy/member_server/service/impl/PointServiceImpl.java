@@ -284,10 +284,10 @@ public class PointServiceImpl implements PointService {
             return;
         }
 
-        if (history.getStatus() == PointStatus.CONFIRMED) {
+       /* if (history.getStatus() == PointStatus.CONFIRMED) {
             log.error("이미 확정(Confirm)된 주문은 TCC Cancel로 취소할 수 없습니다. (별도 반품 로직 필요): orderId={}", orderId);
             return;
-        }
+        }*/
 
         history.updateStatus(PointStatus.CANCELED);
 
