@@ -112,6 +112,7 @@ public class Member {
     @Column(name = "default_address_id")
     private Long defaultAddressId;
 
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "grade_id", nullable = false)
     private Grade grade;

@@ -117,7 +117,7 @@ public class AuthServiceImpl implements AuthService {
                         .gradeName("GENERAL")
                         .min(0)
                         .pointRate(new BigDecimal("0.01"))
-                        .max(null)
+                        .max(100000)
                         .build()
                 ));
 
@@ -202,11 +202,21 @@ public class AuthServiceImpl implements AuthService {
         OAuth2UserInfo userInfo = strategy.getUserInfo(code);
         String providerId = userInfo.getProviderId();
 
-        Member member = memberRepository.findByProviderId(providerId).orElseGet(() -> {
-            log.info("소셜 신규 회원 감지. 자동 가입 진행: {} / {}", provider, userInfo.getName());
-            return socialSignup(userInfo);
-        });
+        Member member = memberRepository.findByProviderId(providerId).orElse(null);
 
+        if (member != null) {
+            if (member.getStatus() == com.nhnacademy.member_server.entity.member.Status.DORMANT) {
+                throw new BusinessException(ErrorCode.MEMBER_DORMANT);
+            }
+
+            if (member.getStatus() == com.nhnacademy.member_server.entity.member.Status.WITHDRAWAL) {
+                throw new BusinessException(ErrorCode.MEMBER_WITHDRAWN);
+            }
+            member.setLastLoginAt(java.time.LocalDateTime.now());
+        } else {
+            log.info("소셜 신규 회원 감지. 자동 가입 진행: {} / {}", provider, userInfo.getName());
+            member = socialSignup(userInfo);
+        }
         boolean isProfileComplete = member.isProfileComplete();
 
         String accessToken = jwtUtil.createAccessToken(member.getId(), member.getRole());
