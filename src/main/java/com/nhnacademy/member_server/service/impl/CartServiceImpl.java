@@ -253,7 +253,7 @@ public class CartServiceImpl implements CartService {
         try {
             luaRedisTemplate.delete(key);
             if(memberId != null) {
-                cartRepository.deleteByMemberId(memberId);
+                cartItemRepository.deleteByCart_Member_Id(memberId);
             }
         } catch (Exception e) {
             log.error("주문 후 장바구니 삭제 실패: memberId={}", memberId, e);
