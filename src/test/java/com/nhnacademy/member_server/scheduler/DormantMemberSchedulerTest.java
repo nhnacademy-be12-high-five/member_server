@@ -4,12 +4,15 @@ import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.entity.member.Status;
+import com.nhnacademy.member_server.feign.OrderFeignClient;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
+import com.nhnacademy.member_server.service.CartService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +30,15 @@ class DormantMemberSchedulerTest {
 
     @Autowired
     private DormantMemberScheduler scheduler;
+
+    @MockBean
+    private OrderFeignClient orderFeignClient;
+
+    @MockBean
+    private CartService cartService;
+
+    @MockBean
+    private CartTTLScanScheduler cartTTLScanScheduler;
 
     @Autowired
     private MemberRepository memberRepository;
