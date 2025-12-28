@@ -31,7 +31,7 @@ Content-Type: application/json
 
 ### 회원 권한 변경 (USER -> ADMIN)
 # memberId가 1번인 사람을 ADMIN으로 만듦
-PUT http://localhost:9001/api/members/1/role?role=ADMIN
+PUT http://localhost:9001/api/members/3/role?role=ADMIN
 
 ### 로그인
 POST {{host}}/api/auth/login
@@ -189,3 +189,29 @@ Content-Type: application/json
   "email": "eseuyun@gmail.com",
   "code": "016068"
 }
+
+
+###
+
+
+@memberServer = http://localhost:9001
+
+### ==========================================
+# [Step 1] 등급 산정 스케줄러 강제 실행
+# ==========================================
+### 스케줄러 실행 (이걸 먼저 눌러주세요!)
+GET {{memberServer}}/test/grade
+
+# ==========================================
+# [Step 2] 결과 검증 (윤봉길 -> PLATINUM ?)
+# ==========================================
+
+### 1. [검증] User 11 (윤봉길) 조회 -> "PLATINUM" 이어야 성공!
+GET {{memberServer}}/api/members/me
+Content-Type: application/json
+X-User-ID: 11
+
+### 2. [비교] User 1 (홍길동) 조회 -> "GENERAL" 이어야 정상
+GET {{memberServer}}/api/members/me
+Content-Type: application/json
+X-User-ID: 1

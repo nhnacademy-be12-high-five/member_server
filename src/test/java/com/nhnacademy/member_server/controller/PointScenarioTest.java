@@ -28,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -63,10 +62,10 @@ class PointScenarioTest {
     @MockitoBean
     PaycoLoginStrategy paycoLoginStrategy;
 
-    @MockBean
+    @MockitoBean
     DefaultRedisScript<Long> redisScript;
 
-    @MockBean
+    @MockitoBean
     private JavaMailSender javaMailSender;
 
     private Long memberId;
@@ -142,6 +141,46 @@ class PointScenarioTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentPoint").value(5000))
-                .andExpect(jsonPath("$.totalEarnedPoint").value(7000));
+                .andExpect(jsonPath("$.totalEarnedPoint").value(7000)); // 누적 적립금: 5000(최초) + 2000(복구) = 7000
+    }
+
+    @Test
+    @DisplayName("시나리오: 적립 -> 사용 -> 반품 환불 (return-revert)")
+    void returnRevertScenario() throws Exception {
+
+        // 1. 초기 10,000 포인트 적립 (구매 금액 1,000,000원 -> 1% 적립)
+        PointEarnRequest earnRequest = new PointEarnRequest(
+                memberId, PointEventType.EARN_ORDER, 1000000L, 2001L
+        );
+
+        mockMvc.perform(post("/internal/points/earn")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(earnRequest)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPoint").value(10000));
+
+
+        // 2. 3,000 포인트 사용 (주문 번호 2002)
+        PointTransactionRequest useRequest = new PointTransactionRequest(
+                memberId, 3000L, 2002L
+        );
+
+        mockMvc.perform(post("/internal/points/use")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(useRequest)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPoint").value(7000));
+
+
+        // 3. 반품으로 인한 3,000 포인트 환불 요청 (return-revert)
+        // 일반 revert와는 다른 엔드포인트를 사용하며, 히스토리에 '반품 환불'로 기록됨
+        mockMvc.perform(post("/internal/points/return-revert")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(useRequest))) // 요청 정보는 동일 (금액, 주문번호)
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPoint").value(10000)); // 사용했던 포인트가 복구되어 10,000점이 됨
     }
 }
