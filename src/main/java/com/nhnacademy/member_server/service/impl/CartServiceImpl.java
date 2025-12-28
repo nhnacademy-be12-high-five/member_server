@@ -43,7 +43,7 @@ public class CartServiceImpl implements CartService {
 
     private static final int MAX_CART_QUANTITY = 100;
 
-    private static final long CART_TTL_SECONDS = 12L * 60 * 60;
+    private static final long CART_TTL_SECONDS = 60 * 60 * 12L;
     private static final long CART_EMPTY_TTL_SECONDS = 60 * 60 * 2L;
 
     private static String memberKey(Long memberId) { return "cart:m:" + memberId; }
@@ -142,6 +142,11 @@ public class CartServiceImpl implements CartService {
     @Override
     public CartAddResponse addToCart(CartAddRequest request, Long memberId, String guestId) {
         String key = getRedisKey(memberId, guestId);
+
+        if (!hasKey(key) && memberId != null) {
+            loadFromDbAndRestoreToRedisIfAbsent(memberId, key);
+        }
+
         String field = String.valueOf(request.bookId());
 
         if (request.quantity() <= 0) throw new BusinessException(ErrorCode.INVALID_QUANTITY);
@@ -173,6 +178,11 @@ public class CartServiceImpl implements CartService {
     @Override
     public CartUpdateResponse updateCartItemQuantity(Long memberId, String guestId, CartItemUpdateRequest request) {
         String key = getRedisKey(memberId, guestId);
+
+        if (!hasKey(key) && memberId != null) {
+            loadFromDbAndRestoreToRedisIfAbsent(memberId, key);
+        }
+
         String field = String.valueOf(request.bookId());
 
         int qty = request.quantity();
@@ -219,6 +229,9 @@ public class CartServiceImpl implements CartService {
             // 장바구니에 아이템 남았는지 체크
             if (Boolean.TRUE.equals(luaRedisTemplate.hasKey(key))) {
                 touchTtl(key);
+            }else{
+                luaRedisTemplate.opsForHash().put(key, "CART_STATUS", "EMPTY");
+                touchEmptyTtl(key);
             }
         } catch (Exception e) {
             log.error("Redis error during deleteCartItem", e);
@@ -342,6 +355,10 @@ public class CartServiceImpl implements CartService {
                 return new CartListResponse(Collections.emptyList(), 0L, hasGuestCart);
             }
 
+            if (redisItems != null && !redisItems.isEmpty()) {
+                touchTtl(key);
+            }
+
             return calculateCartResponse(redisItems, hasGuestCart, key);
 
         } catch (BusinessException be) {
@@ -431,13 +448,14 @@ public class CartServiceImpl implements CartService {
         }
     }
 
-    // 스케줄러 db 업데이트 메서드
+    // 스케줄러 db 업데이트 메서드 + redis 삭제까지 진행
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW) // 무조건 새 트랜잭션 열고 독립적!
     public void syncToDb(Long memberId, Map<Object, Object> redisItems) {
         // 비회원 접근 x
         if (memberId == null) return;
 
+        String cartKey = getRedisKey(memberId, null);
         String lockKey = getSyncLockKey(memberId);
 
         Boolean acquired = luaRedisTemplate.opsForValue()
@@ -511,6 +529,8 @@ public class CartServiceImpl implements CartService {
                         .toList();
                 cartItemRepository.saveAll(newItems);
             }
+
+            luaRedisTemplate.delete(cartKey);
         }catch (Exception e) {
             log.error("DB Sync 중 에러 발생: memberId={}", memberId, e);
             throw e;
@@ -526,6 +546,11 @@ public class CartServiceImpl implements CartService {
         if (memberId == null) return;
 
         String key = getRedisKey(memberId, null);
+
+        if (!hasKey(key)) {
+            log.info("Redis Key 만료됨 (또는 없음). DB 동기화 스킵. MemberId: {}", memberId);
+            return;
+        }
 
         Map<Object, Object> redisItems = luaRedisTemplate.opsForHash().entries(key);
 
