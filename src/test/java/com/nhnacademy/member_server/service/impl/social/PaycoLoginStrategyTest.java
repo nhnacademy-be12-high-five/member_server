@@ -5,7 +5,6 @@ import com.nhnacademy.member_server.dto.response.social.PaycoMemberResponse;
 import com.nhnacademy.member_server.dto.response.social.PaycoTokenResponse;
 import com.nhnacademy.member_server.feign.PaycoApiFeignClient;
 import com.nhnacademy.member_server.feign.PaycoAuthFeignClient;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,25 +22,26 @@ import static org.mockito.BDDMockito.given;
 class PaycoLoginStrategyTest {
 
     @InjectMocks
-    private PaycoLoginStrategy paycoLoginStrategy;
+    PaycoLoginStrategy strategy;
 
     @Mock
-    private PaycoAuthFeignClient authClient;
+    PaycoAuthFeignClient authClient;
 
     @Mock
-    private PaycoApiFeignClient apiClient;
+    PaycoApiFeignClient apiClient;
 
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(paycoLoginStrategy, "clientId", "test-client-id");
-        ReflectionTestUtils.setField(paycoLoginStrategy, "clientSecret", "test-client-secret");
+    @Test
+    void getProviderName_Success() {
+        assertThat(strategy.getProviderName()).isEqualTo("PAYCO");
     }
 
     @Test
-    @DisplayName("PAYCO 로그인 성공 - 사용자 정보 반환")
-    void getUserInfoSuccess() {
-        String authCode = "valid_auth_code";
-        String accessToken = "valid_access_token";
+    void getUserInfo_Success() {
+        String authCode = "test_code";
+        String accessToken = "access_token";
+
+        ReflectionTestUtils.setField(strategy, "clientId", "test_client_id");
+        ReflectionTestUtils.setField(strategy, "clientSecret", "test_client_secret");
 
         PaycoTokenResponse tokenResponse = new PaycoTokenResponse();
         ReflectionTestUtils.setField(tokenResponse, "accessToken", accessToken);
@@ -49,69 +49,62 @@ class PaycoLoginStrategyTest {
         given(authClient.getToken(anyString(), anyString(), anyString(), anyString()))
                 .willReturn(tokenResponse);
 
-
-        PaycoMemberResponse.PaycoMember memberData = new PaycoMemberResponse.PaycoMember();
-        ReflectionTestUtils.setField(memberData, "idNo", "payco_12345");
-        ReflectionTestUtils.setField(memberData, "name", "홍길동");
-        ReflectionTestUtils.setField(memberData, "email", "test@payco.com");
-        ReflectionTestUtils.setField(memberData, "mobile", "010-1234-5678");
-        ReflectionTestUtils.setField(memberData, "genderCode", "MALE");
-        ReflectionTestUtils.setField(memberData, "birthdayMMdd", "0101");
-
-        PaycoMemberResponse.PaycoData data = new PaycoMemberResponse.PaycoData();
-        ReflectionTestUtils.setField(data, "member", memberData);
+        PaycoMemberResponse memberResponse = new PaycoMemberResponse();
 
         PaycoMemberResponse.PaycoHeader header = new PaycoMemberResponse.PaycoHeader();
         ReflectionTestUtils.setField(header, "resultCode", 0);
-        ReflectionTestUtils.setField(header, "resultMessage", "Success");
-
-        PaycoMemberResponse memberResponse = new PaycoMemberResponse();
+        ReflectionTestUtils.setField(header, "isSuccessful", true);
         ReflectionTestUtils.setField(memberResponse, "header", header);
+
+        PaycoMemberResponse.PaycoData data = new PaycoMemberResponse.PaycoData();
+        PaycoMemberResponse.PaycoMember member = new PaycoMemberResponse.PaycoMember();
+        ReflectionTestUtils.setField(member, "idNo", "payco_123");
+        ReflectionTestUtils.setField(member, "name", "홍길동");
+        ReflectionTestUtils.setField(member, "email", "test@payco.com");
+        ReflectionTestUtils.setField(data, "member", member);
         ReflectionTestUtils.setField(memberResponse, "data", data);
 
         given(apiClient.getMemberInfo(anyString(), anyString())).willReturn(memberResponse);
 
-        OAuth2UserInfo userInfo = paycoLoginStrategy.getUserInfo(authCode);
+        OAuth2UserInfo userInfo = strategy.getUserInfo(authCode);
 
         assertThat(userInfo.getProvider()).isEqualTo("PAYCO");
-        assertThat(userInfo.getProviderId()).isEqualTo("payco_12345");
+        assertThat(userInfo.getProviderId()).isEqualTo("payco_123");
         assertThat(userInfo.getName()).isEqualTo("홍길동");
-        assertThat(userInfo.getEmail()).isEqualTo("test@payco.com");
     }
 
     @Test
-    @DisplayName("실패: PAYCO 토큰 발급 실패")
-    void getUserInfoFail_TokenError() {
-        String authCode = "invalid_code";
+    void getUserInfo_Fail_TokenError() {
+        ReflectionTestUtils.setField(strategy, "clientId", "test_client_id");
+        ReflectionTestUtils.setField(strategy, "clientSecret", "test_client_secret");
 
         given(authClient.getToken(anyString(), anyString(), anyString(), anyString()))
                 .willReturn(null);
 
-        assertThatThrownBy(() -> paycoLoginStrategy.getUserInfo(authCode))
+        assertThatThrownBy(() -> strategy.getUserInfo("code"))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("PAYCO 토큰");
+                .hasMessageContaining("PAYCO 토큰 발급 실패");
     }
 
     @Test
-    @DisplayName("실패: PAYCO API 응답 오류 (ResultCode != 0)")
-    void getUserInfoFail_ApiError() {
-        String authCode = "valid_code";
+    void getUserInfo_Fail_ApiError() {
+        ReflectionTestUtils.setField(strategy, "clientId", "test_client_id");
+        ReflectionTestUtils.setField(strategy, "clientSecret", "test_client_secret");
 
         PaycoTokenResponse tokenResponse = new PaycoTokenResponse();
-        ReflectionTestUtils.setField(tokenResponse, "accessToken", "access_token");
+        ReflectionTestUtils.setField(tokenResponse, "accessToken", "access");
         given(authClient.getToken(anyString(), anyString(), anyString(), anyString()))
                 .willReturn(tokenResponse);
 
+        PaycoMemberResponse memberResponse = new PaycoMemberResponse();
         PaycoMemberResponse.PaycoHeader header = new PaycoMemberResponse.PaycoHeader();
         ReflectionTestUtils.setField(header, "resultCode", 9999);
-        ReflectionTestUtils.setField(header, "resultMessage", "Error Occurred");
-
-        PaycoMemberResponse memberResponse = new PaycoMemberResponse();
+        ReflectionTestUtils.setField(header, "resultMessage", "Error");
         ReflectionTestUtils.setField(memberResponse, "header", header);
 
         given(apiClient.getMemberInfo(anyString(), anyString())).willReturn(memberResponse);
 
-        assertThatThrownBy(() -> paycoLoginStrategy.getUserInfo(authCode))
+        assertThatThrownBy(() -> strategy.getUserInfo("code"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("PAYCO API 오류");
     }

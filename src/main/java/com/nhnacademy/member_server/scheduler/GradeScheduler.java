@@ -25,7 +25,7 @@ public class GradeScheduler {
     private final GradeRepository gradeRepository;
     private final OrderFeignClient orderClient;
 
-    @Scheduled(cron = "0 0 0 1 * *")
+    @Scheduled(cron = "0 * * * * *")
     @SchedulerLock(
             name = "gradeUpdateScheduler",
             lockAtMostFor = "10m",

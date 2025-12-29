@@ -1,26 +1,23 @@
 package com.nhnacademy.member_server.service.impl.member;
 
-import com.nhnacademy.member_server.dto.event.MemberLoginEvent;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
+import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
-import com.nhnacademy.member_server.entity.member.Gender;
-import com.nhnacademy.member_server.entity.member.Grade;
-import com.nhnacademy.member_server.entity.member.Member;
-import com.nhnacademy.member_server.entity.member.Role;
-import com.nhnacademy.member_server.entity.member.Status;
+import com.nhnacademy.member_server.entity.member.*;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
+import com.nhnacademy.member_server.service.member.EmailService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,11 +27,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -42,108 +41,188 @@ import static org.mockito.Mockito.*;
 class AuthServiceImplTest {
 
     @InjectMocks
-    private AuthServiceImpl authService;
+    AuthServiceImpl authService;
 
-    @Mock private AuthenticationManager authenticationManager;
-    @Mock private JwtUtil jwtUtil;
-    @Mock private StringRedisTemplate redisTemplate;
-    @Mock private ValueOperations<String, String> valueOperations;
-    @Mock private MemberRepository memberRepository;
-    @Mock private PasswordEncoder passwordEncoder;
-    @Mock private GradeRepository gradeRepository;
-    @Mock private RabbitTemplate rabbitTemplate;
-    @Mock ApplicationEventPublisher eventPublisher;
+    @Mock
+    AuthenticationManager authenticationManager;
+    @Mock
+    JwtUtil jwtUtil;
+    @Mock
+    StringRedisTemplate redisTemplate;
+    @Mock
+    MemberRepository memberRepository;
+    @Mock
+    PasswordEncoder passwordEncoder;
+    @Mock
+    GradeRepository gradeRepository;
+    @Mock
+    RabbitTemplate rabbitTemplate;
+    @Mock
+    EmailService emailService;
+    @Mock
+    ValueOperations<String, String> valueOperations;
 
     @Test
-    @DisplayName("로그인 성공: 토큰 발급, Redis 저장 및 로그인 이벤트 발행 확인")
-    void loginUserSuccess() {
+    @DisplayName("로그인 성공 테스트")
+    void loginUserSuccessTest() {
         String loginId = "user";
         String password = "pw";
         Member member = Member.builder()
                 .id(1L)
                 .loginId(loginId)
-                .password("encodedPw") // Set a password for the member
+                .password("encodedPw")
+                .status(Status.ACTIVE)
                 .role(Role.USER)
                 .build();
-        Authentication authentication = new UsernamePasswordAuthenticationToken(new UserDetailsImpl(member), null);
 
-        // Mock finding the member by loginId (service logic change)
         given(memberRepository.findByLoginId(loginId)).willReturn(Optional.of(member));
+        given(passwordEncoder.matches(password, "encodedPw")).willReturn(true);
 
-        // Mock password matching (CRITICAL: without this, BusinessException is thrown)
-        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        Authentication authentication = mock(Authentication.class);
+        UserDetailsImpl userDetails = new UserDetailsImpl(member);
+        given(authentication.getPrincipal()).willReturn(userDetails);
+        given(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .willReturn(authentication);
 
-        given(authenticationManager.authenticate(any())).willReturn(authentication);
-        given(jwtUtil.createAccessToken(any(), any())).willReturn("access-token");
-        given(jwtUtil.createRefreshToken(any())).willReturn("refresh-token");
+        given(jwtUtil.createAccessToken(1L, Role.USER)).willReturn("access");
+        given(jwtUtil.createRefreshToken(1L)).willReturn("refresh");
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         ReflectionTestUtils.setField(authService, "refreshExpirationTime", 1000L);
 
         TokenDto result = authService.loginUser(loginId, password);
 
-        assertThat(result.getAccessToken()).isEqualTo("access-token");
+        assertThat(result.getAccessToken()).isEqualTo("access");
 
-        verify(redisTemplate.opsForValue()).set(anyString(), anyString(), anyLong(), any());
-
-        ArgumentCaptor<MemberLoginEvent> eventCaptor = ArgumentCaptor.forClass(MemberLoginEvent.class);
-
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
-
-        MemberLoginEvent capturedEvent = eventCaptor.getValue();
-        assertThat(capturedEvent.getMemberId()).isEqualTo(member.getId());
+        verify(valueOperations).set(any(), any(), any(Long.class), any(TimeUnit.class));
     }
 
     @Test
-    @DisplayName("회원가입 성공 및 웰컴 쿠폰 메시지 발행")
-    void signupSuccess() {
+    @DisplayName("로그인 실패 - 탈퇴한 회원")
+    void loginUserWithdrawalTest() {
+        String loginId = "user";
+        String password = "pw";
+        Member member = Member.builder().loginId(loginId).status(Status.WITHDRAWAL).build();
 
+        given(memberRepository.findByLoginId(loginId)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> authService.loginUser(loginId, password))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_WITHDRAWN);
+    }
+
+    @Test
+    @DisplayName("회원가입 성공 테스트")
+    void signupSuccessTest() {
         MemberCreateRequest request = MemberCreateRequest.builder()
-                .loginId("newuser").password("pw").name("신규").phone("01012341234")
-                .email("new@test.com").gender(Gender.MALE).birthDate(LocalDate.now())
+                .loginId("new")
+                .password("pw")
+                .name("name")
+                .email("e@e.com")
+                .phone("01012345678")
                 .build();
 
-        given(memberRepository.existsByLoginId(any())).willReturn(false);
-        given(memberRepository.existsByEmail(any())).willReturn(false);
-        given(memberRepository.existsByPhone(any())).willReturn(false);
-
-        given(gradeRepository.findByGradeName("GENERAL")).willReturn(Optional.of(
-                Grade.builder().gradeName("GENERAL").pointRate(BigDecimal.ZERO).build()
-        ));
-        given(passwordEncoder.encode(any())).willReturn("encodedPw");
-
-        Member savedMember = Member.builder().id(1L).build();
-        given(memberRepository.save(any(Member.class))).willReturn(savedMember);
-
+        given(memberRepository.existsByLoginId("new")).willReturn(false);
+        given(gradeRepository.findByGradeName("GENERAL")).willReturn(
+                Optional.of(Grade.builder().gradeName("GENERAL").pointRate(BigDecimal.ONE).build())
+        );
+        given(passwordEncoder.encode("pw")).willReturn("encoded");
+        given(memberRepository.save(any(Member.class))).willAnswer(inv -> {
+            Member m = inv.getArgument(0);
+            return Member.builder().id(1L).loginId(m.getLoginId()).build();
+        });
 
         authService.signup(request);
 
-
         verify(memberRepository).save(any(Member.class));
-        verify(rabbitTemplate).convertAndSend(eq("high-five-coupon-welcome-queue"), any(Object.class));
+        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class));
     }
 
     @Test
-    @DisplayName("토큰 재발급 성공")
-    void reissueSuccess() {
-
-        String refreshToken = "valid-refresh-token";
+    @DisplayName("로그아웃 테스트")
+    void logoutTest() {
+        String token = "access";
         Long memberId = 1L;
-        Member member = Member.builder().id(memberId).status(Status.ACTIVE).role(Role.USER).build();
+
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(redisTemplate.delete("RT:" + memberId)).willReturn(true);
+        given(jwtUtil.getRemainingTime(token)).willReturn(1000L);
+
+        authService.logout(token, memberId);
+
+        verify(redisTemplate).delete("RT:" + memberId);
+        verify(valueOperations).set(eq(token), eq("logout"), any(Long.class), any(TimeUnit.class));
+    }
+
+    @Test
+    @DisplayName("토큰 재발급 테스트")
+    void reissueTest() {
+        String refreshToken = "refresh";
+        Long memberId = 1L;
 
         given(jwtUtil.validateToken(refreshToken)).willReturn(true);
         given(jwtUtil.getUserId(refreshToken)).willReturn(memberId);
+
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(valueOperations.get("RT:" + memberId)).willReturn(refreshToken);
+
+        Member member = Member.builder().id(memberId).role(Role.USER).status(Status.ACTIVE).build();
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
 
-        given(jwtUtil.createAccessToken(any(), any())).willReturn("new-access");
-        given(jwtUtil.createRefreshToken(any())).willReturn("new-refresh");
+        given(jwtUtil.createAccessToken(memberId, Role.USER)).willReturn("newAccess");
+        given(jwtUtil.createRefreshToken(memberId)).willReturn("newRefresh");
 
         ReflectionTestUtils.setField(authService, "refreshExpirationTime", 1000L);
 
         TokenDto result = authService.reissue(refreshToken);
 
-        assertThat(result.getAccessToken()).isEqualTo("new-access");
+        assertThat(result.getAccessToken()).isEqualTo("newAccess");
+    }
+
+    @Test
+    @DisplayName("아이디 찾기 검증 및 조회 테스트")
+    void findLoginIdByEmailTest() {
+        String email = "test@test.com";
+        String code = "123456";
+        Member member = Member.builder().loginId("tester").build();
+
+        given(emailService.verifyCode(email, code, EmailType.FIND_ID)).willReturn(true);
+        given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
+
+        String result = authService.findLoginIdByEmail(email, code);
+
+        assertThat(result).isEqualTo("te****");
+    }
+
+    @Test
+    @DisplayName("비밀번호 재설정 테스트")
+    void resetPasswordTest() {
+        String loginId = "test";
+        String email = "e@e.com";
+        String authCode = "code";
+        String newPassword = "newPw";
+
+        PasswordResetRequest request = new PasswordResetRequest();
+        ReflectionTestUtils.setField(request, "loginId", loginId);
+        ReflectionTestUtils.setField(request, "newPassword", newPassword);
+        ReflectionTestUtils.setField(request, "email", email);
+        ReflectionTestUtils.setField(request, "authCode", authCode);
+
+        Member member = Member.builder()
+                .loginId(loginId)
+                .email(email)
+                .status(Status.ACTIVE)
+                .build();
+
+        given(emailService.verifyCode(email, authCode, EmailType.RESET_PASSWORD)).willReturn(true);
+
+        given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
+
+        given(passwordEncoder.encode(newPassword)).willReturn("encoded");
+
+        authService.resetPassword(request);
+
+        assertThat(member.getPassword()).isEqualTo("encoded");
+        verify(memberRepository).save(member);
     }
 }

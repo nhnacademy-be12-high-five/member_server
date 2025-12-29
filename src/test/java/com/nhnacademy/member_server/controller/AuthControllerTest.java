@@ -1,82 +1,97 @@
-//package com.nhnacademy.member_server.controller;
-//
-//import com.fasterxml.jackson.databind.ObjectMapper;
-//import com.nhnacademy.member_server.dto.request.member.LoginRequest;
-//import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
-//import com.nhnacademy.member_server.dto.response.member.TokenDto;
-//import com.nhnacademy.member_server.entity.member.Gender;
-//import com.nhnacademy.member_server.entity.member.Role;
-//import com.nhnacademy.member_server.repository.MemberRepository;
-//import com.nhnacademy.member_server.service.member.AuthService;
-//import org.junit.jupiter.api.DisplayName;
-//import org.junit.jupiter.api.Test;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-//import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-//import org.springframework.boot.test.mock.mockito.MockBean;
-//import org.springframework.http.MediaType;
-//import org.springframework.test.web.servlet.MockMvc;
-//import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-//import java.time.LocalDate;
-//
-//import static org.mockito.ArgumentMatchers.any;
-//import static org.mockito.BDDMockito.given;
-//import static org.mockito.Mockito.verify;
-//import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-//import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-//import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-//
-//@WebMvcTest(controllers = AuthController.class, properties = "jwt.refresh_expiration_time=604800000")
-//@AutoConfigureMockMvc(addFilters = false)
-//class AuthControllerTest {
-//
-//    @Autowired
-//    private MockMvc mockMvc;
-//
-//    @MockBean
-//    private AuthService authService;
-//
-//    @MockBean
-//    private MemberRepository memberRepository;
-//
-//    @Autowired
-//    private ObjectMapper objectMapper;
-//
-//    @Test
-//    @DisplayName("로그인 성공 테스트")
-//    void loginSuccess() throws Exception {
-//        LoginRequest request = new LoginRequest("testId", "password");
-//        TokenDto tokenDto = new TokenDto("access-token", "refresh-token", true);
-//        given(authService.loginUser(any(), any())).willReturn(tokenDto);
-//
-//        mockMvc.perform(post("/api/auth/login")
-//                        .with(csrf())
-//                        .contentType(MediaType.APPLICATION_JSON)
-//                        .content(objectMapper.writeValueAsString(request)))
-//                .andExpect(status().isOk())
-//                .andExpect(jsonPath("$.accessToken").value("access-token"));
-//    }
-//
-//    @Test
-//    @DisplayName("회원가입 성공 테스트")
-//    void signupSuccess() throws Exception {
-//        MemberCreateRequest request = new MemberCreateRequest(
-//                "testId",
-//                "pw",
-//                "name",
-//                "01012345678",
-//                "email@test.com",
-//                Gender.MALE,
-//                LocalDate.now(),
-//                Role.USER
-//        );
-//
-//        mockMvc.perform(post("/api/auth/signup")
-//                        .with(csrf())
-//                        .contentType(MediaType.APPLICATION_JSON)
-//                        .content(objectMapper.writeValueAsString(request)))
-//                .andExpect(status().isCreated());
-//
-//        verify(authService).signup(any(MemberCreateRequest.class));
-//    }
-//}
+package com.nhnacademy.member_server.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nhnacademy.member_server.dto.request.member.LoginRequest;
+import com.nhnacademy.member_server.dto.response.member.TokenDto;
+import com.nhnacademy.member_server.service.member.AuthService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@ExtendWith(MockitoExtension.class)
+class AuthControllerTest {
+
+    @InjectMocks
+    AuthController authController;
+
+    @Mock
+    AuthService authService;
+
+    MockMvc mockMvc;
+    ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(authController).build();
+        objectMapper = new ObjectMapper();
+    }
+
+    @Test
+    @DisplayName("로그인 성공 테스트")
+    void loginTest() throws Exception {
+        LoginRequest loginRequest = new LoginRequest("testUser", "password123!");
+        TokenDto tokenDto = new TokenDto("accessToken", "refreshToken", true);
+
+        given(authService.loginUser(any(), any())).willReturn(tokenDto);
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("accessToken"))
+                .andExpect(jsonPath("$.refreshToken").value("refreshToken"))
+                .andExpect(jsonPath("$.profileComplete").value(true));
+    }
+
+    @Test
+    @DisplayName("토큰 재발급 테스트")
+    void reissueTest() throws Exception {
+        TokenDto tokenDto = new TokenDto("newAccess", "newRefresh", true);
+
+        given(authService.reissue("validRefreshToken")).willReturn(tokenDto);
+
+        mockMvc.perform(post("/api/auth/reissue")
+                        .header("X-Refresh-Token", "validRefreshToken"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("newAccess"));
+    }
+
+    @Test
+    @DisplayName("로그아웃 테스트")
+    void logoutTest() throws Exception {
+        mockMvc.perform(post("/api/auth/logout")
+                        .header("X-User-ID", 1L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer validToken"))
+                .andExpect(status().isOk());
+
+        verify(authService).logout("validToken", 1L);
+    }
+
+    @Test
+    @DisplayName("소셜 로그인 테스트")
+    void loginSocialTest() throws Exception {
+        TokenDto tokenDto = new TokenDto("socialAccess", "socialRefresh", false);
+
+        given(authService.loginSocial("PAYCO", "authCode")).willReturn(tokenDto);
+
+        mockMvc.perform(post("/api/auth/login/{provider}", "PAYCO")
+                        .param("code", "authCode"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("socialAccess"));
+    }
+}
