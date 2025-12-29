@@ -173,21 +173,26 @@ class CartTTLScanSchedulerTest {
         );
 
         // TTL 설정
-        given(redisTemplate.getExpire(anyString(), eq(TimeUnit.SECONDS))).willReturn(60L); // 둘 다 임박
+        given(redisTemplate.opsForHash()).willReturn(hashOperations);
+
+        // [해결책 2] 스케줄러가 키를 통해 데이터를 조회할 때 비어있지 않은 맵을 반환하도록 설정
+        // anyString()을 써서 모든 키 조회에 대해 더미 데이터를 반환하게 함
+        given(hashOperations.entries(anyString())).willReturn(Map.of("1", "1"));
+
+        // TTL 설정
+        given(redisTemplate.getExpire(anyString(), eq(TimeUnit.SECONDS))).willReturn(60L);
 
         // Service 예외 설정
+        // [중요] any() 매처를 사용할 때 Map 타입이 맞는지 확인 (anyMap() 사용 권장)
         willThrow(new RuntimeException("DB Connection Error"))
-                .given(cartService).syncToDb(eq(100L), any());
+                .given(cartService).syncToDb(eq(100L), anyMap());
 
         // When
         scheduler.syncExpiringCarts();
 
         // Then
-        // 1. 100번 회원은 시도했으나 예외 발생 (하지만 스케줄러가 죽지 않음)
-        verify(cartService).syncToDb(eq(100L), any());
-
-        // 2. 101번 회원도 정상적으로 시도됨 (Loop가 안 끊김)
-        verify(cartService).syncToDb(eq(101L), any());
+        verify(cartService).syncToDb(eq(100L), anyMap());
+        verify(cartService).syncToDb(eq(101L), anyMap());
     }
 
     // ==========================================

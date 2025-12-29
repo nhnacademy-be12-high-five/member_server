@@ -356,12 +356,19 @@ class CartServiceTest {
         String key = "cart:m:1";
         String lockKey = "lock:cart:sync:1";
 
-        // Redis 조회 Mock
+        // 1. [필수] hasKey 메서드가 true를 반환하도록 설정 (이게 없어서 실패한 것!)
+        given(luaRedisTemplate.hasKey(key)).willReturn(true);
+
+        // 2. HashOperations 연결 및 데이터 설정
+        given(luaRedisTemplate.opsForHash()).willReturn(hashOperations);
         Map<Object, Object> redisItems = Map.of("100", "1");
         given(hashOperations.entries(key)).willReturn(redisItems);
 
-        // 락 성공 Mock (내부 호출을 위해)
+        // 3. 락 설정 (setIfAbsent)
+        given(luaRedisTemplate.opsForValue()).willReturn(valueOperations);
         given(valueOperations.setIfAbsent(eq(lockKey), anyString(), anyLong(), any())).willReturn(true);
+
+        // 4. Repository Mock
         given(memberRepository.findById(memberId)).willReturn(Optional.of(mock(Member.class)));
         given(cartRepository.findByMember_Id(memberId)).willReturn(Optional.of(mock(Cart.class)));
 
@@ -369,11 +376,9 @@ class CartServiceTest {
         cartService.syncToDb(memberId);
 
         // Then
-        // 내부적으로 syncToDb(id, map)이 호출되어 repository가 동작했는지 확인
         verify(cartItemRepository).findByCart_Member_Id(memberId);
         verify(luaRedisTemplate).delete(lockKey);
     }
-
     @Test
     @DisplayName("syncToDb - 예외 발생 시 락 해제 및 throw")
     void syncToDb_Exception_ReleasesLock() {
