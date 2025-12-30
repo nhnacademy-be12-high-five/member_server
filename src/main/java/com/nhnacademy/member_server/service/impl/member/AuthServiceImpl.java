@@ -1,5 +1,7 @@
 package com.nhnacademy.member_server.service.impl.member;
 
+import com.nhnacademy.member_server.dto.event.MemberLoginEvent;
+import com.nhnacademy.member_server.dto.event.MemberLogoutEvent;
 import com.nhnacademy.member_server.dto.message.CouponIssueMessage;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
@@ -15,6 +17,7 @@ import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.member.AuthService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.EventListener;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -25,6 +28,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -47,6 +52,7 @@ public class AuthServiceImpl implements AuthService {
     private final RabbitTemplate rabbitTemplate;
     private final SocialLoginFactory socialLoginFactory;
     private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
@@ -90,6 +96,8 @@ public class AuthServiceImpl implements AuthService {
                 refreshExpirationTime,
                 TimeUnit.MILLISECONDS
         );
+
+        eventPublisher.publishEvent(new MemberLoginEvent(dbMember.getId()));
 
         return new TokenDto(accessToken, refreshToken, isProfileComplete);
     }
@@ -193,6 +201,7 @@ public class AuthServiceImpl implements AuthService {
         if (expiration > 0) {
             redisTemplate.opsForValue().set(accessToken, "logout", expiration, TimeUnit.MILLISECONDS);
         }
+        eventPublisher.publishEvent(new MemberLogoutEvent(memberId));
     }
 
     @Override

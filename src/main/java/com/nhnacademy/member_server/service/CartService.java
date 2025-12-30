@@ -17,7 +17,9 @@ public interface CartService {
 
     void syncToDb(Long memberId, Map<Object, Object> redisItems);
 
-    void deleteAllCartItem(Long memberId, String guestId);
+    void syncToDb(Long memberId);
+
+    void deleteAllCartItem(Long memberId, String guestId, boolean isOrder);
 
     void deleteCartItem(Long memberId, String guestId, Long bookId);
 
@@ -26,4 +28,6 @@ public interface CartService {
     void migrateGuestCart(String guestId, Long memberId);
 
     void deleteGuestCartOnly(String guestId);
+
+    void deleteAllCartItemForOrder(Long memberId);
 }

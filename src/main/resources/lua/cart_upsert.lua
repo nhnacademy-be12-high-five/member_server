@@ -7,6 +7,8 @@
 
 -- keys는 redis용 ARGV는 로직용
 
+redis.call('HDEL', KEYS[1], 'CART_STATUS')
+
 local key = KEYS[1]
 local field = ARGV[1]
 local qtyArg = tonumber(ARGV[2])

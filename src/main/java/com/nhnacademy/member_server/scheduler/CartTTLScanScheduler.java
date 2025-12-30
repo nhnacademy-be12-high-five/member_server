@@ -43,37 +43,42 @@ public class CartTTLScanScheduler {
         RedisConnectionFactory factory = redisTemplate.getConnectionFactory();
         if (factory == null) return;
 
-        RedisConnection connection = factory.getConnection();
-        if (connection == null) return;
+        try (RedisConnection connection = factory.getConnection()) {
+            if (connection == null) return;
 
-        try (Cursor<byte[]> cursor = connection.scan(options)) {
+            try (Cursor<byte[]> cursor = connection.scan(options)) {
 
-            while (cursor.hasNext()) {
-                String cartKey = new String(cursor.next());
+                while (cursor.hasNext()) {
+                    String cartKey = new String(cursor.next());
 
-                Long ttl = redisTemplate.getExpire(cartKey, TimeUnit.SECONDS);
-                if (ttl == null || ttl < 0) {
-                    continue; // TTL 없음 or 이미 만료
-                }
+                    Long ttl = redisTemplate.getExpire(cartKey, TimeUnit.SECONDS);
+                    if (ttl == null || ttl < 0) {
+                        continue; // TTL 없음 or 이미 만료
+                    }
 
-                if (ttl > TTL_THRESHOLD_SECONDS) {
-                    continue; // 아직 멀었음
-                }
+                    if (ttl > TTL_THRESHOLD_SECONDS) {
+                        continue; // 아직 멀었음
+                    }
 
-                Long memberId = extractMemberId(cartKey);
-                if (memberId == null) continue;
+                    Long memberId = extractMemberId(cartKey);
+                    if (memberId == null) continue;
 
-                Map<Object, Object> redisItems =
-                        redisTemplate.opsForHash().entries(cartKey);
+                    Map<Object, Object> redisItems =
+                            redisTemplate.opsForHash().entries(cartKey);
 
-                try {
-                    // 세션 종료 시점 단 1회 DB 반영
-                    cartService.syncToDb(memberId, redisItems);
-                } catch (Exception e) {
-                    log.error("DB sync failed for memberId={}", memberId, e);
+                    // 이유 내가 짠 코드는 장바구니가 비면 무조건 CART_STATUS 키가 남아있기 떄문에
+                    if (redisItems.isEmpty()) {
+                        continue;
+                    }
+
+                    try {
+                        // 세션 종료 시점 단 1회 DB 반영
+                        cartService.syncToDb(memberId, redisItems);
+                    } catch (Exception e) {
+                        log.error("DB sync failed for memberId={}", memberId, e);
+                    }
                 }
             }
-
         } catch (Exception e) {
             log.error("Cart TTL scan scheduler failed", e);
         }
@@ -83,6 +88,7 @@ public class CartTTLScanScheduler {
         try {
             return Long.parseLong(cartKey.substring("cart:m:".length()));
         } catch (Exception e) {
+            log.warn("잘못된 Redis Key 형식이 감지됨: {}", cartKey);
             return null;
         }
     }

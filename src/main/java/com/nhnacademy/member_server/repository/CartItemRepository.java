@@ -11,9 +11,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CartItemRepository extends JpaRepository<CartItem, Long> {
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("DELETE FROM CartItem ci WHERE ci.cart.id = :cartId")
-    void deleteAllByCartId(@Param("cartId") Long cartId);
-
     List<CartItem> findByCart_Member_Id(Long memberId);
+
+    void deleteByCart_Member_Id(Long memberId);
 }

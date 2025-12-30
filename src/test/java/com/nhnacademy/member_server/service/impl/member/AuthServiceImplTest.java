@@ -1,5 +1,7 @@
 package com.nhnacademy.member_server.service.impl.member;
 
+import com.nhnacademy.member_server.dto.event.MemberLoginEvent;
+import com.nhnacademy.member_server.dto.event.MemberLogoutEvent;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
@@ -18,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -61,6 +64,8 @@ class AuthServiceImplTest {
     EmailService emailService;
     @Mock
     ValueOperations<String, String> valueOperations;
+    @Mock
+    ApplicationEventPublisher eventPublisher;
 
     @Test
     @DisplayName("로그인 성공 테스트")
@@ -95,6 +100,8 @@ class AuthServiceImplTest {
         assertThat(result.getAccessToken()).isEqualTo("access");
 
         verify(valueOperations).set(any(), any(), any(Long.class), any(TimeUnit.class));
+        verify(eventPublisher).publishEvent(any(MemberLoginEvent.class));
+
     }
 
     @Test
@@ -152,6 +159,7 @@ class AuthServiceImplTest {
 
         verify(redisTemplate).delete("RT:" + memberId);
         verify(valueOperations).set(eq(token), eq("logout"), any(Long.class), any(TimeUnit.class));
+        verify(eventPublisher).publishEvent(any(MemberLogoutEvent.class));
     }
 
     @Test
