@@ -87,7 +87,17 @@ class CartControllerTest {
                         .header("X-USER-ID", 1L))
                 .andExpect(status().isNoContent());
 
-        verify(cartService).deleteAllCartItem(1L, null);
+        verify(cartService).deleteAllCartItem(1L, null, false);
+    }
+
+    @Test
+    @DisplayName("주문 요청으로 장바구니 비우기")
+    void deleteAllCartItemForOrder() throws Exception{
+        mockMvc.perform(delete("/api/cart/items/immediately")
+                .header("X-USER-ID", 1L))
+                .andExpect(status().isNoContent());
+
+        verify(cartService).deleteAllCartItemForOrder(1L);
     }
 
     // --- [PUT /api/cart/items] ---

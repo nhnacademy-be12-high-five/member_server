@@ -28,11 +28,8 @@ public class CartController{
     @PostMapping("/items")
     public ResponseEntity<CartAddResponse> addItemToCart(@RequestBody @Valid CartAddRequest request,
                                                          @CookieValue(value = "guestCookie", required = false) String guestId,
-                                                         @RequestHeader(name = "X-USER-ID", required = false) Long XId,
+                                                         @RequestHeader(name = "X-USER-ID", required = false) Long memberId,
                                                          HttpServletResponse httpResponse) {
-        // 회원 비회원을 구분
-        Long memberId = Objects.isNull(XId) ? null : XId;
-
         // 둘 다 존재하지 않으면 새로운 guest 장바구니 생성
         if (memberId == null && guestId == null) {
             guestId = UUID.randomUUID().toString();
@@ -57,8 +54,18 @@ public class CartController{
     // 장바구니 비우기
     @DeleteMapping("/items")
     public ResponseEntity<Void> deleteAllCartItem(@CookieValue(value = "guestCookie", required = false) String guestId,
-                                                  @RequestHeader(name = "X-USER-ID", required = false) Long memberId){
-        cartService.deleteAllCartItem(memberId, guestId);
+                                                  @RequestHeader(name = "X-USER-ID", required = false) Long memberId,
+                                                  @RequestParam(defaultValue = "false") boolean isOrder){
+        cartService.deleteAllCartItem(memberId, guestId, isOrder);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // 주문 완료 후 비우기 (DB 삭제)
+    @DeleteMapping("/items/immediately")
+    public ResponseEntity<Void> clearCartForOrder(@RequestHeader(name = "X-USER-ID", required = false) Long memberId) {
+
+        cartService.deleteAllCartItemForOrder(memberId);
 
         return ResponseEntity.noContent().build();
     }
