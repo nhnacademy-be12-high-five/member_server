@@ -7,11 +7,13 @@ import com.nhnacademy.member_server.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
@@ -22,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +41,7 @@ class EmailServiceImplTest {
     MemberRepository memberRepository;
     @Mock
     ValueOperations<String, String> valueOperations;
+
 
     @Test
     @DisplayName("회원가입 인증메일 발송 - 중복된 이메일 실패")
@@ -62,7 +66,7 @@ class EmailServiceImplTest {
     }
 
     @Test
-    @DisplayName("인증메일 발송 성공")
+    @DisplayName("인증메일 발송 성공 (SIGNUP)")
     void sendVerificationCodeSuccessTest() {
         String email = "new@test.com";
         given(memberRepository.existsByEmail(email)).willReturn(false);
@@ -118,5 +122,78 @@ class EmailServiceImplTest {
         boolean result = emailService.verifyCode(email, "123456", EmailType.SIGNUP);
 
         assertThat(result).isFalse();
+    }
+
+    @Test
+    @DisplayName("인증코드 검증 실패 - 입력값이 Null인 경우")
+    void verifyCode_NullInput_Test() {
+        assertThat(emailService.verifyCode(null, "123456", EmailType.SIGNUP)).isFalse();
+        assertThat(emailService.verifyCode("email", null, EmailType.SIGNUP)).isFalse();
+        assertThat(emailService.verifyCode(null, null, EmailType.SIGNUP)).isFalse();
+    }
+
+    @Test
+    @DisplayName("메일 발송 실패 - JavaMailSender 예외 발생")
+    void sendVerificationCode_MailSendException_Test() {
+        String email = "new@test.com";
+        given(memberRepository.existsByEmail(email)).willReturn(false);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+        doThrow(new MailSendException("Mail Error")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        assertThatThrownBy(() -> emailService.sendVerificationCode(email, EmailType.SIGNUP))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MAIL_SEND_ERROR);
+    }
+
+    @Test
+    @DisplayName("인증메일 발송 - FIND_ID 타입 (메일 제목/내용 확인)")
+    void sendVerificationCode_FindId_Test() {
+        String email = "exist@test.com";
+        given(memberRepository.existsByEmail(email)).willReturn(true);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+        emailService.sendVerificationCode(email, EmailType.FIND_ID);
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+
+        SimpleMailMessage sentMessage = captor.getValue();
+        assertThat(sentMessage.getSubject()).contains("아이디 찾기");
+        assertThat(sentMessage.getText()).contains("아이디 찾기를 위한 인증 번호");
+    }
+
+    @Test
+    @DisplayName("인증메일 발송 - ACTIVATE 타입 (메일 제목/내용 확인)")
+    void sendVerificationCode_Activate_Test() {
+        String email = "exist@test.com";
+        given(memberRepository.existsByEmail(email)).willReturn(true);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+        emailService.sendVerificationCode(email, EmailType.ACTIVATE);
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+
+        SimpleMailMessage sentMessage = captor.getValue();
+        assertThat(sentMessage.getSubject()).contains("휴면 계정 활성화");
+        assertThat(sentMessage.getText()).contains("휴면 해제를 위한 인증 번호");
+    }
+
+    @Test
+    @DisplayName("인증메일 발송 - RESET_PASSWORD 타입 (메일 제목/내용 확인)")
+    void sendVerificationCode_ResetPassword_Test() {
+        String email = "exist@test.com";
+        given(memberRepository.existsByEmail(email)).willReturn(true);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+        emailService.sendVerificationCode(email, EmailType.RESET_PASSWORD);
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+
+        SimpleMailMessage sentMessage = captor.getValue();
+        assertThat(sentMessage.getSubject()).contains("비밀번호 재설정");
+        assertThat(sentMessage.getText()).contains("비밀번호 재설정을 위한 인증 번호");
     }
 }
