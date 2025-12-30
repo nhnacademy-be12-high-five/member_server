@@ -246,7 +246,7 @@ public class AuthServiceImpl implements AuthService {
 
         String realName = (userInfo.getName() != null) ? userInfo.getName() : provider + " User";
         String realEmail = (userInfo.getEmail() != null) ? userInfo.getEmail() : uniqueLoginId + "@no-email.com";
-        String realPhone = (userInfo.getMobile() != null) ? userInfo.getMobile() : "010-0000-0000";
+        String realPhone = (userInfo.getMobile() != null) ? userInfo.getMobile() : "01000000000";
 
         if (realPhone.startsWith("82")) {
             realPhone = "010" + realPhone.substring(4);
