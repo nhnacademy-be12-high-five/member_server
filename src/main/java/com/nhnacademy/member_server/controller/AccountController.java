@@ -21,7 +21,7 @@ public class AccountController {
     private final MemberRepository memberRepository;
 
     @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@RequestBody MemberCreateRequest request) {
+    public ResponseEntity<Void> signup(@RequestBody @Valid MemberCreateRequest request) {
         authService.signup(request);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
@@ -44,7 +44,7 @@ public class AccountController {
     }
 
     @PostMapping("/find/password")
-    public ResponseEntity<Void> resetPassword(@RequestBody PasswordResetRequest request) {
+    public ResponseEntity<Void> resetPassword(@RequestBody @Valid PasswordResetRequest request) {
         authService.resetPassword(request);
         return ResponseEntity.ok().build();
     }

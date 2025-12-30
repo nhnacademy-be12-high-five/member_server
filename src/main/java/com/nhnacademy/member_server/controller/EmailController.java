@@ -35,13 +35,13 @@ public class EmailController {
     }
 
     @PostMapping("/dormant/send")
-    public ResponseEntity<Void> sendDormantCode(@RequestBody EmailRequest request) {
+    public ResponseEntity<Void> sendDormantCode(@RequestBody @Valid EmailRequest request) {
         emailService.sendVerificationCode(request.getEmail(), EmailType.ACTIVATE);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<String> verifyEmail(@RequestBody EmailVerifyRequest request) {
+    public ResponseEntity<String> verifyEmail(@RequestBody @Valid EmailVerifyRequest request) {
 
         boolean isVerified = emailService.verifyCode(
                 request.getEmail(),
