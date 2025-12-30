@@ -44,7 +44,7 @@ public class AddressController {
     //주소 추가하기
     @PostMapping
     public ResponseEntity<AddressResponse> createAddress(@RequestHeader(name = "X-User-ID") Long memberId,
-                                                         @Valid @RequestBody AddressRequest addressRequest) {
+                                                         @RequestBody @Valid AddressRequest addressRequest) {
         AddressResponse addressResponse = addressService.registerAddress(memberId, addressRequest);
         return ResponseEntity.ok(addressResponse);
     }
@@ -59,7 +59,7 @@ public class AddressController {
     //특정 주소 업데이트
     @PutMapping("/{address-id}")
     public ResponseEntity<AddressResponse> updateAddress(@RequestHeader(name = "X-User-ID") Long memberId,
-                                                         @RequestBody AddressRequest addressRequest,
+                                                         @RequestBody @Valid AddressRequest addressRequest,
                                                          @PathVariable("address-id") Long addressId) {
         AddressResponse addressResponse = addressService.modifyAddress(memberId, addressId, addressRequest);
         return ResponseEntity.ok(addressResponse);

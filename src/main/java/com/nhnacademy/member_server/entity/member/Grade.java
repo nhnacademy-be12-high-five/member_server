@@ -41,6 +41,6 @@ public class Grade {
 
     @NotNull
     @Setter
-    @Column(name = "point_rate", precision = 3, scale = 2)
+    @Column(name = "point_rate", precision = 4, scale = 3)
     private BigDecimal pointRate;
 }
