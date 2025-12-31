@@ -9,6 +9,8 @@ import com.nhnacademy.member_server.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Autowired; // 추가
+import org.springframework.context.annotation.Lazy; // 추가
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +34,10 @@ public class GradeScheduler {
     private final GradeRepository gradeRepository;
     private final OrderFeignClient orderClient;
 
-    // 매월 1일 0시 0분 0초에 실행
+    @Autowired
+    @Lazy
+    private GradeScheduler self;
+
     @Scheduled(cron = "0 0 0 1 * *")
     @SchedulerLock(
             name = "gradeUpdateScheduler",
@@ -45,6 +50,13 @@ public class GradeScheduler {
         LocalDateTime since = LocalDateTime.now().minusMonths(3);
 
         List<Grade> allGrades = gradeRepository.findAll();
+
+        // [수정 2] 등급 정책이 없는 경우 방어 로직 (IndexOutOfBoundsException 방지)
+        if (allGrades.isEmpty()) {
+            log.error("[Scheduler] 등급 정책(Grade) 데이터가 없습니다. 스케줄러를 종료합니다.");
+            return;
+        }
+
         allGrades.sort((g1, g2) -> Integer.compare(g2.getMin(), g1.getMin()));
 
         int page = 0;
@@ -63,15 +75,12 @@ public class GradeScheduler {
 
             Map<Long, Long> orderStats = Collections.emptyMap();
             try {
-
                 log.info("주문 서버로 요청 보냄: 회원 IDs = {}", memberIds);
-
                 ResponseEntity<Map<Long, Long>> response = orderClient.getBulkTotalAmounts(memberIds, since);
 
                 if (response.getBody() != null) {
                     orderStats = response.getBody();
                 }
-
                 log.info("주문 서버 응답 결과: {}", orderStats);
 
             } catch (Exception e) {
@@ -80,7 +89,8 @@ public class GradeScheduler {
                 continue;
             }
 
-            totalUpdatedCount += updateBatch(members, orderStats, allGrades);
+            // [수정 3] self를 통해 호출해야 @Transactional(REQUIRES_NEW)가 작동함
+            totalUpdatedCount += self.updateBatch(members, orderStats, allGrades);
 
             page++;
         }
@@ -107,7 +117,6 @@ public class GradeScheduler {
             }
         }
 
-
         if (!changedMembers.isEmpty()) {
             memberRepository.saveAll(changedMembers);
         }
@@ -121,7 +130,6 @@ public class GradeScheduler {
                 return grade;
             }
         }
-
         return sortedGrades.get(sortedGrades.size() - 1);
     }
 }
