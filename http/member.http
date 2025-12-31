@@ -31,7 +31,7 @@ Content-Type: application/json
 
 ### 회원 권한 변경 (USER -> ADMIN)
 # memberId가 1번인 사람을 ADMIN으로 만듦
-PUT http://localhost:9001/api/members/3/role?role=ADMIN
+PUT http://localhost:9001/api/members/1/role?role=ADMIN
 
 ### 로그인
 POST {{host}}/api/auth/login
@@ -215,3 +215,8 @@ X-User-ID: 11
 GET {{memberServer}}/api/members/me
 Content-Type: application/json
 X-User-ID: 1
+
+
+### 3. 등급 산정 강제 실행 (직접 호출)
+POST http://localhost:9001/test/grade-job
+Content-Type: application/json

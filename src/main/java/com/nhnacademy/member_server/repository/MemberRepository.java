@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -44,7 +45,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByLoginIdAndEmail(String loginId, String email);
 
+    @Modifying(clearAutomatically = true) // 영속성 컨텍스트 초기화 필수
+    @Query("UPDATE Member m SET m.status = :targetStatus WHERE m.lastLoginAt < :cutOffDate AND m.status = :currentStatus")
+    int bulkUpdateDormantMembers(@Param("cutOffDate") LocalDateTime cutOffDate,
+                                 @Param("currentStatus") Status currentStatus,
+                                 @Param("targetStatus") Status targetStatus);
 
-    Page<Member> findByLastLoginAtBeforeAndStatus(LocalDateTime lastLoginAt, Status status, Pageable pageable);
-
+    Page<Member> findAllByStatus(Status status, Pageable pageable);
 }
