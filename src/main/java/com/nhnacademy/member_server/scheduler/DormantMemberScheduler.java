@@ -24,43 +24,18 @@ public class DormantMemberScheduler {
 
     @Scheduled(cron = "0 0 0 * * *")
     @SchedulerLock(
-            name = "dormantMemberScheduler",
-            lockAtMostFor = "10m",
-            lockAtLeastFor = "1m"
+            name = "DormantMemberScheduler_processDormantMembers",
+            lockAtMostFor = "5m",
+            lockAtLeastFor = "30s"
     )
     @Transactional
     public void processDormantMembers() {
-
         log.info("[Scheduler] 휴면 회원 전환 배치 시작");
 
         LocalDateTime cutOffDate = LocalDateTime.now().minusMonths(3);
 
-        int size = 100;
-        int totalCount = 0;
+        int updatedCount = memberRepository.bulkUpdateDormantMembers(cutOffDate, Status.ACTIVE, Status.DORMANT);
 
-        while (true) {
-            Page<Member> page =
-                    memberRepository.findByLastLoginAtBeforeAndStatus(
-                            cutOffDate,
-                            Status.ACTIVE,
-                            PageRequest.of(0, size)
-                    );
-
-            if (!page.hasContent()) {
-                break;
-            }
-
-            for (Member member : page.getContent()) {
-                member.setStatus(Status.DORMANT);
-                totalCount++;
-            }
-        }
-
-        if (totalCount == 0) {
-            log.info("휴면 전환 대상 회원이 없습니다.");
-            return;
-        }
-
-        log.info("총 {}명의 회원이 휴면 상태(DORMANT)로 전환되었습니다.", totalCount);
+        log.info("총 {}명의 회원이 휴면 상태로 전환되었습니다.", updatedCount);
     }
 }
