@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.controller.swagger.EmailApi;
 import com.nhnacademy.member_server.dto.request.member.EmailRequest;
 import com.nhnacademy.member_server.dto.request.member.EmailVerifyRequest;
 import com.nhnacademy.member_server.entity.member.EmailType;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/emails")
 @RequiredArgsConstructor
-public class EmailController {
+public class EmailController implements EmailApi {
 
     private final EmailService emailService;
 

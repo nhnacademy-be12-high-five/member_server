@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.controller.swagger.AddressApi;
 import com.nhnacademy.member_server.dto.request.member.AddressRequest;
 import com.nhnacademy.member_server.dto.response.member.AddressListResponse;
 import com.nhnacademy.member_server.dto.response.member.AddressResponse;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/address")
 @RequiredArgsConstructor
-public class AddressController {
+public class AddressController implements AddressApi {
 
     private final AddressService addressService;
 

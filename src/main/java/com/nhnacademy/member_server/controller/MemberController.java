@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.controller.swagger.MemberApi;
 import com.nhnacademy.member_server.dto.request.member.DormantRequest;
 import com.nhnacademy.member_server.dto.request.member.MemberUpdateRequest;
 import com.nhnacademy.member_server.dto.response.member.MemberResponse;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
 @Slf4j
-public class MemberController {
+public class MemberController implements MemberApi {
 
     private final MemberService memberService;
     private final AuthService authService;
