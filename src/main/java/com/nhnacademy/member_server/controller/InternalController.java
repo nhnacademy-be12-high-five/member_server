@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.controller.swagger.InternalApi;
 import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.scheduler.GradeScheduler;
 import com.nhnacademy.member_server.service.member.MemberService;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/internal")
 @RequiredArgsConstructor
-public class InternalController {
+public class InternalController implements InternalApi {
 
     private final MemberService memberService;
     private final GradeScheduler gradeScheduler;
