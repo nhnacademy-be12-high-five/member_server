@@ -1,6 +1,7 @@
 package com.nhnacademy.member_server.controller;
 
-import static org.mockito.ArgumentMatchers.refEq;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,18 +10,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
+import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.service.PointService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(PointTccController.class)
+@WebMvcTest(PointController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class PointTccControllerTest {
 
@@ -94,11 +97,15 @@ class PointTccControllerTest {
     }
 
     @Test
-    @DisplayName("반품 시 적립 포인트 회수 (deductPoint) 성공")
+    @DisplayName("반품 시 적립 포인트 회수 (deductPoint) -> createTransaction 호출 검증")
     void deductPoint_Success() throws Exception {
         Long memberId = 1L;
-        Integer amount = 500;
+        Long amount = 500L;
         Long orderId = 200L;
+
+        // Service는 통합 메서드인 createTransaction을 호출하게 됨
+        given(pointService.createTransaction(any(PointTransactionCreateRequest.class)))
+                .willReturn(amount);
 
         mockMvc.perform(post("/api/members/{memberId}/point-deduct", memberId)
                         .param("amount", String.valueOf(amount))
@@ -106,21 +113,27 @@ class PointTccControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk());
 
-        then(pointService).should().deductPoint(memberId, (long) amount, orderId);
+        // 검증: createTransaction이 호출되었는지, 그리고 EventType이 올바른지 확인
+        ArgumentCaptor<PointTransactionCreateRequest> captor = ArgumentCaptor.forClass(PointTransactionCreateRequest.class);
+        then(pointService).should().createTransaction(captor.capture());
+
+        PointTransactionCreateRequest request = captor.getValue();
+        assertThat(request.getMemberId()).isEqualTo(memberId);
+        assertThat(request.getAmount()).isEqualTo(amount);
+        assertThat(request.getOrderId()).isEqualTo(orderId);
+        // ★ 핵심: 컨트롤러가 내부적으로 EARN_CANCEL_RETURN 타입으로 요청을 만들었는지 확인
+        assertThat(request.getPointEventType()).isEqualTo(PointEventType.EARN_CANCEL_RETURN);
     }
 
     @Test
-    @DisplayName("반품 시 사용 포인트 환불 (revertPoint) 성공")
+    @DisplayName("반품 시 사용 포인트 환불 (revertPoint) -> createTransaction 호출 검증")
     void revertPoint_Success() throws Exception {
         Long memberId = 1L;
-        Integer amount = 1000;
+        Long amount = 1000L;
         Long orderId = 200L;
 
-        PointTransactionRequest expectedRequest = new PointTransactionRequest(
-                memberId,
-                (long) amount,
-                orderId
-        );
+        given(pointService.createTransaction(any(PointTransactionCreateRequest.class)))
+                .willReturn(6000L); // 예상 잔액 리턴
 
         mockMvc.perform(post("/api/members/{memberId}/point/revert", memberId)
                         .param("amount", String.valueOf(amount))
@@ -128,6 +141,16 @@ class PointTccControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk());
 
-        then(pointService).should().revertUsePointForReturn(refEq(expectedRequest));
+        // 검증
+        ArgumentCaptor<PointTransactionCreateRequest> captor = ArgumentCaptor.forClass(PointTransactionCreateRequest.class);
+        then(pointService).should().createTransaction(captor.capture());
+
+        PointTransactionCreateRequest request = captor.getValue();
+        assertThat(request.getMemberId()).isEqualTo(memberId);
+        assertThat(request.getAmount()).isEqualTo(amount);
+        assertThat(request.getOrderId()).isEqualTo(orderId);
+        // ★ 핵심: 컨트롤러가 내부적으로 USE_CANCEL_RETURN (또는 USE_CANCEL_ORDER) 타입으로 요청했는지 확인
+        // 문맥상 반품(Revert for Return)이므로 USE_CANCEL_RETURN을 기대
+        assertThat(request.getPointEventType()).isIn(PointEventType.USE_CANCEL_RETURN, PointEventType.USE_CANCEL_ORDER);
     }
 }
