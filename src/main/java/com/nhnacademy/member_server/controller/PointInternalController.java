@@ -1,5 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
+import com.nhnacademy.member_server.controller.swagger.PointInternalApi;
 import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/internal/point-transactions")
 @Slf4j
-public class PointInternalController {
+public class PointInternalController implements PointInternalApi {
 
     private final PointService pointService;
 

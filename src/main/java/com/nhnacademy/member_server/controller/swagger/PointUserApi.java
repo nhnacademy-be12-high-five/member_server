@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.docs;
+package com.nhnacademy.member_server.controller.swagger;
 
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Point User API", description = "사용자용 포인트 잔액 및 이력 조회 API")
-public interface PointSwagger {
+public interface PointUserApi {
 
     @Operation(summary = "내 포인트 잔액 조회", description = "현재 사용자의 포인트 잔액을 조회합니다.")
     @ApiResponses(value = {

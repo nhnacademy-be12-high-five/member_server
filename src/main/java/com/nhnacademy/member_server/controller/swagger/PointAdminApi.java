@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.docs;
+package com.nhnacademy.member_server.controller.swagger;
 
 import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
 import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
@@ -12,7 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Point Admin API", description = "관리자용 포인트 정책 및 수동 조정 API")
-public interface PointAdminSwagger {
+public interface PointAdminApi {
 
     @Operation(summary = "포인트 정책 조회", description = "현재 적용 중인 최신 포인트 정책을 조회합니다.")
     @ApiResponses(value = {
