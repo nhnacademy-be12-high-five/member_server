@@ -24,9 +24,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@Tag(name = "Cart API", description = "장바구니(회원/비회원) 관련 API")
+@Tag(name = "10. Cart", description = "장바구니(회원/비회원) 관련 API")
 @RequestMapping("/api/cart")
-public interface CartSwagger {
+public interface CartApi {
 
     @Operation(summary = "장바구니에 책 추가", description = "사용자의 장바구니를 찾아 책을 추가합니다. (비회원은 쿠키, 회원은 헤더 ID 사용)")
     @ApiResponses(value = {
