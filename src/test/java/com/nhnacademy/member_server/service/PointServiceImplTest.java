@@ -28,6 +28,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class PointServiceImplTest {
@@ -143,6 +144,19 @@ class PointServiceImplTest {
         Member member = createMember(memberId, 1000L);
         given(memberRepository.findByIdForUpdate(memberId)).willReturn(Optional.of(member));
 
+        // ★ [수정 2] 회수하려면 '원래 적립된 내역(EARN_ORDER)'이 DB에 있어야 함 (Mock 설정 추가)
+        PointHistory originalEarn = PointHistory.builder()
+                .member(member)
+                .amount(500L) // 원래 500원 적립됐었다고 가정
+                .orderId(300L)
+                .pointEventType(PointEventType.EARN_ORDER)
+                .build();
+        ReflectionTestUtils.setField(originalEarn, "id", 123L); // ID도 필요하면 주입
+
+        // EARN_ORDER 조회 시 originalEarn 리턴하도록 설정
+        given(pointHistoryRepository.findByOrderIdAndPointEventType(300L, PointEventType.EARN_ORDER))
+                .willReturn(Optional.of(originalEarn));
+
         PointTransactionCreateRequest request = PointTransactionCreateRequest.builder()
                 .memberId(memberId)
                 .pointEventType(PointEventType.EARN_CANCEL_RETURN)
@@ -154,13 +168,12 @@ class PointServiceImplTest {
         Long result = pointServiceImpl.createTransaction(request);
 
         // then
-        assertThat(result).isEqualTo(500L); // 1000 - 500
+        assertThat(result).isEqualTo(500L); // 1000 - 500 = 500 (성공)
 
         ArgumentCaptor<PointHistory> captor = ArgumentCaptor.forClass(PointHistory.class);
         then(pointHistoryRepository).should().save(captor.capture());
 
-        // 회수는 음수로 저장
-        assertThat(captor.getValue().getAmount()).isEqualTo(-500L);
+        assertThat(captor.getValue().getAmount()).isEqualTo(-500L); // 차감 확인
         assertThat(captor.getValue().getPointEventType()).isEqualTo(PointEventType.EARN_CANCEL_RETURN);
     }
 
@@ -276,6 +289,8 @@ class PointServiceImplTest {
                 .status(PointStatus.RESERVED)
                 .pointEventType(PointEventType.USE_ORDER)
                 .build();
+
+        ReflectionTestUtils.setField(history, "id", 999L);
 
         given(pointHistoryRepository.findByOrderIdAndPointEventType(100L, PointEventType.USE_ORDER))
                 .willReturn(Optional.of(history));
