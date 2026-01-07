@@ -54,7 +54,7 @@ public class PointServiceImpl implements PointService {
             case USE_CANCEL_ORDER, USE_CANCEL_RETURN ->
                     processRefund(request);
             case EARN_CANCEL_RETURN ->
-                    processDeduct(request);
+                    processEarnCancel(request);
             default -> throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         };
     }
@@ -64,7 +64,7 @@ public class PointServiceImpl implements PointService {
         Member member = memberRepository.findByIdForUpdate(request.getMemberId())
                 .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
-        long pointToEarn = 0L;
+        long pointToEarn;
         Long orderIdToSave = null;
         PointEventType eventType = request.getPointEventType();
 
@@ -129,33 +129,14 @@ public class PointServiceImpl implements PointService {
 
     // [내부 로직 2] 사용 처리
     private Long processUse(PointTransactionCreateRequest request) {
-        if (request.getOrderId() == null) throw new BusinessException(POINT_NOT_ORDER_ID);
-        if (request.getAmount() == null || request.getAmount() <= 0) throw new BusinessException(INVALID_INPUT_VALUE);
-
-        Member member = memberRepository.findByIdForUpdate(request.getMemberId())
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-
-        long amountUsedPoint = request.getAmount();
-        if (member.getCurrentPoint() < amountUsedPoint) {
-            throw new BusinessException(POINT_NOT_ENOUGH);
-        }
-
-        long newPointBalance = member.getCurrentPoint() - amountUsedPoint;
-        member.setCurrentPoint(newPointBalance);
-
-        String description = formatDescription(request.getPointEventType(), request.getOrderId());
-
-        pointHistoryRepository.save(PointHistory.builder()
-                .orderId(request.getOrderId())
-                .member(member)
-                .amount(-amountUsedPoint)
-                .description(description)
-                .pointEventType(request.getPointEventType())
-                .pointBalance(newPointBalance)
-                .status(PointStatus.CONFIRMED)
-                .build()); // originalPointHistoryId는 null (생략 가능)
-
-        return newPointBalance;
+        // CONFIRMED 상태로 호출
+        return deductPoint(
+                request.getMemberId(),
+                request.getAmount(),
+                request.getOrderId(),
+                request.getPointEventType(),
+                PointStatus.CONFIRMED
+        );
     }
 
     // [내부 로직 3] 환불/취소 처리
@@ -167,10 +148,13 @@ public class PointServiceImpl implements PointService {
         long newBalance = member.getCurrentPoint() + amount;
         member.setCurrentPoint(newBalance);
 
+        String description = formatDescription(request.getPointEventType(), request.getOrderId());
+
         pointHistoryRepository.save(PointHistory.builder()
                 .member(member)
                 .orderId(request.getOrderId())
                 .amount(amount)
+                .description(description)
                 .pointEventType(request.getPointEventType())
                 .description(request.getPointEventType().getDescription())
                 .pointBalance(newBalance)
@@ -181,29 +165,44 @@ public class PointServiceImpl implements PointService {
         return newBalance;
     }
 
-    // [내부 로직 4] 적립 회수/차감
-    private Long processDeduct(PointTransactionCreateRequest request) {
+    private Long processEarnCancel(PointTransactionCreateRequest request) {
+        // 1. 해당 주문으로 '상품 구매 적립(EARN_ORDER)'된 내역이 있는지 조회
+        PointHistory originalEarn = pointHistoryRepository.findByOrderIdAndPointEventType(
+                        request.getOrderId(), PointEventType.EARN_ORDER).orElse(null);
+
+        // 2. 적립 내역이 없으면(적립 안 된 주문이면) 회수할 것도 없으니 현재 잔액 리턴하고 종료
         Member member = memberRepository.findByIdForUpdate(request.getMemberId())
                 .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
-        long amountToDeduct = request.getAmount();
+        if (originalEarn == null) {
+            log.info("회수할 적립 내역이 존재하지 않습니다. orderId={}", request.getOrderId());
+            return member.getCurrentPoint();
+        }
+
+        // 이미 회수된 적이 있는지 체크 (중복 회수 방지)
+        boolean alreadyDeducted = pointHistoryRepository.existsByOrderIdAndPointEventType(
+                request.getOrderId(), PointEventType.EARN_CANCEL_RETURN);
+        if (alreadyDeducted) {
+            log.warn("이미 적립 회수된 주문입니다. orderId={}", request.getOrderId());
+            return member.getCurrentPoint();
+        }
+
+        // 3. 실제 적립되었던 금액만큼 차감 (request.getAmount() 무시)
+        long amountToDeduct = originalEarn.getAmount();
         long newBalance = member.getCurrentPoint() - amountToDeduct;
         member.setCurrentPoint(newBalance);
 
-        String description = request.getPointEventType().getDescription();
-        if (request.getOrderId() != null) {
-            description += String.format(" (주문번호: %d)", request.getOrderId());
-        }
+        String description = "반품으로 인한 적립 포인트 회수 (주문번호: " + request.getOrderId() + ")";
 
         pointHistoryRepository.save(PointHistory.builder()
                 .member(member)
                 .orderId(request.getOrderId())
-                .amount(-amountToDeduct)
-                .pointEventType(request.getPointEventType())
+                .amount(-amountToDeduct) // 음수 저장
+                .pointEventType(PointEventType.EARN_CANCEL_RETURN)
                 .description(description)
                 .pointBalance(newBalance)
                 .status(PointStatus.CONFIRMED)
-                .originalPointHistoryId(request.getOriginalPointHistoryId())
+                .originalPointHistoryId(originalEarn.getId()) // 원본 내역 연결
                 .build());
 
         return newBalance;
@@ -290,9 +289,7 @@ public class PointServiceImpl implements PointService {
             return;
         }
 
-        PointTransactionRequest request = new PointTransactionRequest(memberId, amount, orderId);
-        // ★ 수정: processUsePoint -> processUsePointForTcc 호출
-        processUsePointForTcc(request);
+        deductPoint(memberId, amount, orderId, PointEventType.USE_ORDER, PointStatus.RESERVED);
 
         log.info("TCC Reserve(차감/예약) 완료: memberId={}, amount={}", memberId, amount);
     }
@@ -374,6 +371,36 @@ public class PointServiceImpl implements PointService {
                 .pointBalance(newPointBalance)
                 .status(PointStatus.RESERVED)
                 .build());
+    }
+
+    // 공통 포인트 차감 로직
+    private Long deductPoint(Long memberId, Long amount, Long orderId, PointEventType eventType, PointStatus status) {
+        if (orderId == null) throw new BusinessException(POINT_NOT_ORDER_ID);
+        if (amount == null || amount <= 0) throw new BusinessException(INVALID_INPUT_VALUE);
+
+        Member member = memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+
+        if (member.getCurrentPoint() < amount) {
+            throw new BusinessException(POINT_NOT_ENOUGH);
+        }
+
+        long newPointBalance = member.getCurrentPoint() - amount;
+        member.setCurrentPoint(newPointBalance);
+
+        String description = formatDescription(eventType, orderId);
+
+        pointHistoryRepository.save(PointHistory.builder()
+                .orderId(orderId)
+                .member(member)
+                .amount(-amount) // 음수 저장
+                .description(description)
+                .pointEventType(eventType)
+                .pointBalance(newPointBalance)
+                .status(status) // 상태값을 파라미터로 받음 (KEY POINT)
+                .build());
+
+        return newPointBalance;
     }
 
     private String formatDescription(PointEventType type, Long orderId) {

@@ -20,8 +20,7 @@ public enum PointEventType {
     USE_ORDER("상품 결제 사용"),
     USE_ADMIN("관리자에 의한 차감"),
 
-
-    EARN_CANCEL_RETURN("반품으로 인한 적립 회수"),
+    EARN_CANCEL_RETURN("반품으로 인한 적립 포인트 회수"),
 
     USE_CANCEL_ORDER("주문 취소로 인한 사용 포인트 복구"),
     USE_CANCEL_RETURN("반품으로 인한 사용 포인트 복구");
