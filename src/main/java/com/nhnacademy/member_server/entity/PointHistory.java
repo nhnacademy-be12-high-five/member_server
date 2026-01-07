@@ -60,8 +60,11 @@ public class PointHistory {
     @Column(nullable = false)
     private PointStatus status; // RESERVED, CONFIRMED, CANCELED
 
+    private Long originalPointHistoryId;
+
     @Builder
-    public PointHistory(Long orderId, Member member, Long amount, String description, PointEventType pointEventType, Long pointBalance, PointStatus status) {
+    public PointHistory(Long orderId, Member member, Long amount, String description, PointEventType pointEventType,
+                        Long pointBalance, PointStatus status, Long originalPointHistoryId) {
         this.orderId = orderId;
         this.member = member;
         this.amount = amount;
@@ -69,6 +72,7 @@ public class PointHistory {
         this.pointEventType = pointEventType;
         this.pointBalance = pointBalance;
         this.status = (status != null) ? status : PointStatus.CONFIRMED;
+        this.originalPointHistoryId = originalPointHistoryId;
     }
 
     public void updateStatus(PointStatus status) {

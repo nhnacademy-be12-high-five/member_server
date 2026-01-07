@@ -12,13 +12,12 @@ import com.nhnacademy.member_server.entity.PointPolicy;
 import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-
-import java.util.Optional;
 
 class InitDataConfigTest {
 

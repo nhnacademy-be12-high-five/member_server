@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.docs;
+package com.nhnacademy.member_server.controller.swagger;
 
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
@@ -14,11 +14,19 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
-@Tag(name = "Cart API", description = "장바구니(회원/비회원) 관련 API")
+@Tag(name = "10. Cart", description = "장바구니(회원/비회원) 관련 API")
 @RequestMapping("/api/cart")
-public interface CartSwagger {
+public interface CartApi {
 
     @Operation(summary = "장바구니에 책 추가", description = "사용자의 장바구니를 찾아 책을 추가합니다. (비회원은 쿠키, 회원은 헤더 ID 사용)")
     @ApiResponses(value = {

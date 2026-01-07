@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.docs.PointAdminSwagger;
+import com.nhnacademy.member_server.controller.swagger.PointAdminApi;
 import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
 import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
 import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin/points")
 @RequiredArgsConstructor
-public class PointAdminController implements PointAdminSwagger {
+public class PointAdminController implements PointAdminApi {
 
     private final PointService pointService;
 

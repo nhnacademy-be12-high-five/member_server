@@ -4,13 +4,12 @@ import com.nhnacademy.member_server.entity.PointPolicy;
 import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
+import java.math.BigDecimal;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
 
 @Configuration
 @Profile("!test")

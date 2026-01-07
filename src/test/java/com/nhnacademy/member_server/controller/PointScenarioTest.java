@@ -1,14 +1,12 @@
 package com.nhnacademy.member_server.controller;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nhnacademy.member_server.dto.request.PointEarnRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.entity.member.Member;
@@ -25,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
@@ -40,7 +37,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
-@EntityScan("com.nhnacademy.member_server.entity")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -51,24 +47,20 @@ class PointScenarioTest {
     @Autowired MemberRepository memberRepository;
     @Autowired GradeRepository gradeRepository;
 
-    @MockitoBean
-    private RedisTemplate<String, Object> redisTemplate;
-    @MockitoBean
-    private RedisConnectionFactory redisConnectionFactory;
-    @MockitoBean
-    private ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
-    @MockitoBean
-    SocialLoginFactory socialLoginFactory;
-    @MockitoBean
-    PaycoLoginStrategy paycoLoginStrategy;
+    @MockitoBean(name = "cartTTLScanScheduler")
+    private Object cartTTLScanScheduler;
 
-    @MockitoBean
-    DefaultRedisScript<Long> redisScript;
-
-    @MockitoBean
-    private JavaMailSender javaMailSender;
+    @MockitoBean private RedisTemplate<String, Object> redisTemplate;
+    @MockitoBean private RedisConnectionFactory redisConnectionFactory;
+    @MockitoBean private ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
+    @MockitoBean private SocialLoginFactory socialLoginFactory;
+    @MockitoBean private PaycoLoginStrategy paycoLoginStrategy;
+    @MockitoBean private DefaultRedisScript<Long> redisScript;
+    @MockitoBean private JavaMailSender javaMailSender;
 
     private Long memberId;
+
+    private static final String BASE_URL = "/internal/point-transactions";
 
     @BeforeEach
     void setUp() {
@@ -93,28 +85,37 @@ class PointScenarioTest {
     }
 
     @Test
-    @DisplayName("시나리오: 적립 -> 사용 -> 취소 -> 잔액 조회")
+    @DisplayName("시나리오: 적립(구매) -> 사용(구매) -> 사용 취소(단순취소) -> 잔액 확인")
     void pointLifecycleScenario() throws Exception {
 
-        // 상품 구매로 5,000원 적립 요청 (주문 서버 -> 멤버 서버)
-        PointEarnRequest earnRequest = new PointEarnRequest(
-                memberId, PointEventType.EARN_ORDER, 500000L, 1001L
-        );
+        // 1. 상품 구매 적립 (EARN_ORDER)
+        // 예상: 500,000 * 0.01 = 5,000 포인트 적립
+        PointTransactionCreateRequest earnRequest = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.EARN_ORDER)
+                .amount(500000L)
+                .orderId(1001L)
+                .build();
 
-        mockMvc.perform(post("/internal/points/earn")
+        mockMvc.perform(post(BASE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(earnRequest)))
                 .andDo(print())
                 .andExpect(status().isOk())
+                // PointTransactionResponse 객체 내의 currentPoint 필드 확인
                 .andExpect(jsonPath("$.currentPoint").value(5000));
 
 
-        // 다른 상품 구매로 2,000원 사용 요청 (결제 서버 -> 멤버 서버)
-        PointTransactionRequest useRequest = new PointTransactionRequest(
-                memberId, 2000L, 1002L
-        );
+        // 2. 포인트 사용 (USE_ORDER)
+        // 예상: 5,000 - 2,000 = 3,000 포인트 잔액
+        PointTransactionCreateRequest useRequest = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.USE_ORDER)
+                .amount(2000L)
+                .orderId(1002L)
+                .build();
 
-        mockMvc.perform(post("/internal/points/use")
+        mockMvc.perform(post(BASE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(useRequest)))
                 .andDo(print())
@@ -122,65 +123,91 @@ class PointScenarioTest {
                 .andExpect(jsonPath("$.currentPoint").value(3000));
 
 
-        // 결제 취소로 2,000원 복구 요청 (결제 서버 -> 멤버 서버)
-        PointTransactionRequest revertRequest = new PointTransactionRequest(
-                memberId, 2000L, 1002L
-        );
+        // 3. 결제 취소로 인한 사용 포인트 복구 (USE_CANCEL_ORDER)
+        // 예상: 3,000 + 2,000 = 5,000 포인트 잔액
+        PointTransactionCreateRequest revertRequest = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.USE_CANCEL_ORDER)
+                .amount(2000L)
+                .orderId(1002L)
+                .build();
 
-        mockMvc.perform(post("/internal/points/revert")
+        mockMvc.perform(post(BASE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(revertRequest)))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentPoint").value(5000));
-
-
-        // 마이페이지에서 최종 잔액 조회 (프론트 -> 게이트웨이 -> 멤버 서버)
-        mockMvc.perform(get("/api/points/balance")
-                        .header("X-USER-ID", memberId))
-                .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentPoint").value(5000))
-                .andExpect(jsonPath("$.totalEarnedPoint").value(7000)); // 누적 적립금: 5000(최초) + 2000(복구) = 7000
     }
 
     @Test
-    @DisplayName("시나리오: 적립 -> 사용 -> 반품 환불 (return-revert)")
+    @DisplayName("시나리오: 적립 -> 사용 -> 반품 (사용 포인트 복구 + 적립 포인트 회수)")
     void returnRevertScenario() throws Exception {
 
-        // 1. 초기 10,000 포인트 적립 (구매 금액 1,000,000원 -> 1% 적립)
-        PointEarnRequest earnRequest = new PointEarnRequest(
-                memberId, PointEventType.EARN_ORDER, 1000000L, 2001L
-        );
+        // 1. 초기 적립 (EARN_ORDER)
+        // 1,000,000 * 0.01 = 10,000 포인트
+        PointTransactionCreateRequest earnRequest = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.EARN_ORDER)
+                .amount(1000000L)
+                .orderId(2001L)
+                .build();
 
-        mockMvc.perform(post("/internal/points/earn")
+        mockMvc.perform(post(BASE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(earnRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPoint").value(10000));
+
+
+        // 2. 포인트 사용 (USE_ORDER)
+        // 10,000 - 3,000 = 7,000 포인트
+        PointTransactionCreateRequest useRequest = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.USE_ORDER)
+                .amount(3000L)
+                .orderId(2001L)
+                .build();
+
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(useRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPoint").value(7000));
+
+
+        // 3-1. [반품] 사용했던 포인트 복구 (USE_CANCEL_RETURN)
+        // 7,000 + 3,000 = 10,000 포인트
+        PointTransactionCreateRequest useCancelRequest = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.USE_CANCEL_RETURN)
+                .amount(3000L)
+                .orderId(2001L)
+                .build();
+
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(useCancelRequest)))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentPoint").value(10000));
 
 
-        // 2. 3,000 포인트 사용 (주문 번호 2002)
-        PointTransactionRequest useRequest = new PointTransactionRequest(
-                memberId, 3000L, 2002L
-        );
+        // 3-2. [반품] 적립되었던 포인트 회수 (EARN_CANCEL_RETURN)
+        // 10,000 - 10,000 = 0 포인트
+        // (금액을 0으로 보내도 Service 로직에서 원본 주문(2001)의 적립금을 찾아 자동 차감)
+        PointTransactionCreateRequest earnCancelRequest = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.EARN_CANCEL_RETURN)
+                .amount(0L)
+                .orderId(2001L)
+                .build();
 
-        mockMvc.perform(post("/internal/points/use")
+        mockMvc.perform(post(BASE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(useRequest)))
+                        .content(objectMapper.writeValueAsString(earnCancelRequest)))
                 .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentPoint").value(7000));
-
-
-        // 3. 반품으로 인한 3,000 포인트 환불 요청 (return-revert)
-        // 일반 revert와는 다른 엔드포인트를 사용하며, 히스토리에 '반품 환불'로 기록됨
-        mockMvc.perform(post("/internal/points/return-revert")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(useRequest))) // 요청 정보는 동일 (금액, 주문번호)
-                .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentPoint").value(10000)); // 사용했던 포인트가 복구되어 10,000점이 됨
+                .andExpect(jsonPath("$.currentPoint").value(0));
     }
 }

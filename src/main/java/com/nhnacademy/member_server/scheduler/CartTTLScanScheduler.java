@@ -1,6 +1,8 @@
 package com.nhnacademy.member_server.scheduler;
 
 import com.nhnacademy.member_server.service.CartService;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -11,9 +13,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 
 // 트래픽이 엄청 몰렸을 때 SCAN 방식에서 ZSET 방식으로 바꾸면 됨 확장성!
