@@ -46,5 +46,5 @@ jwt:
 
 
 encrypt:
-  secret-key: "test_key_for_unit_test_only_111"
+  secret-key: "test_key_for_unit_test_only_1111"
 
