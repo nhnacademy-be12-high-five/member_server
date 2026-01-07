@@ -38,7 +38,7 @@ class MemberServiceImplTest {
     @Mock
     MemberRepository memberRepository;
     @Mock
-    Sha256Utils sha256Utils; // [추가]
+    Sha256Utils sha256Utils;
 
 
     @Test
@@ -121,7 +121,7 @@ class MemberServiceImplTest {
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
 
-        // [변경] 해시 Mocking
+
         given(sha256Utils.encrypt("new@test.com")).willReturn("newEmailHash");
         given(sha256Utils.encrypt("01099998888")).willReturn("newPhoneHash");
 
@@ -167,9 +167,6 @@ class MemberServiceImplTest {
                 .build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-        // 암호화 메서드 자체는 호출될 수 있으나, existsBy... 호출은 안되어야 함
-        // given(sha256Utils.encrypt(anyString())).willReturn("hash"); // 필요시 추가
-
         memberService.updateMember(memberId, request);
 
         verify(memberRepository, never()).existsByEmailHash(anyString());
@@ -185,7 +182,6 @@ class MemberServiceImplTest {
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
 
-        // [변경]
         given(sha256Utils.encrypt("new@test.com")).willReturn("newHash");
         given(memberRepository.existsByEmailHash("newHash")).willReturn(true);
 
@@ -203,7 +199,6 @@ class MemberServiceImplTest {
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
 
-        // [변경]
         given(sha256Utils.encrypt("01099999999")).willReturn("newPhoneHash");
         given(memberRepository.existsByPhoneHash("newPhoneHash")).willReturn(true);
 
@@ -320,7 +315,6 @@ class MemberServiceImplTest {
         Member member = Member.builder().status(Status.DORMANT).build();
         String hash = "hash";
 
-        // [변경]
         given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
         given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.of(member));
 
@@ -360,7 +354,6 @@ class MemberServiceImplTest {
         Member member = Member.builder().status(Status.DORMANT).build();
         String hash = "hash";
 
-        // [변경]
         given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
         given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.of(member));
 

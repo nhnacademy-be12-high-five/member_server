@@ -72,7 +72,7 @@ class AuthServiceImplTest {
     @Mock
     ApplicationEventPublisher eventPublisher;
     @Mock
-    Sha256Utils sha256Utils; // [추가]
+    Sha256Utils sha256Utils;
 
     @Test
     @DisplayName("로그인 성공 테스트")
@@ -139,11 +139,9 @@ class AuthServiceImplTest {
         String emailHash = "emailHash";
         String phoneHash = "phoneHash";
 
-        // [추가] 해시 Mocking
         given(sha256Utils.encrypt(request.getEmail())).willReturn(emailHash);
-        given(sha256Utils.encrypt("01012345678")).willReturn(phoneHash); // replaceAll 처리된 번호
+        given(sha256Utils.encrypt("01012345678")).willReturn(phoneHash);
 
-        // [변경] 중복 체크도 해시로
         given(memberRepository.existsByLoginId("new")).willReturn(false);
         given(memberRepository.existsByEmailHash(emailHash)).willReturn(false);
         given(memberRepository.existsByPhoneHash(phoneHash)).willReturn(false);
@@ -215,7 +213,6 @@ class AuthServiceImplTest {
 
         given(emailService.verifyCode(email, code, EmailType.FIND_ID)).willReturn(true);
 
-        // [변경] 해시 조회 Mock
         given(sha256Utils.encrypt(email)).willReturn(hash);
         given(memberRepository.findByEmailHash(hash)).willReturn(Optional.of(member));
 
@@ -247,7 +244,6 @@ class AuthServiceImplTest {
 
         given(emailService.verifyCode(email, authCode, EmailType.RESET_PASSWORD)).willReturn(true);
 
-        // [변경] 해시 조회 Mock
         given(sha256Utils.encrypt(email)).willReturn(hash);
         given(memberRepository.findByEmailHash(hash)).willReturn(Optional.of(member));
 

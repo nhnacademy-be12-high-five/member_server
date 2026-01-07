@@ -42,7 +42,7 @@ class EmailServiceImplTest {
     @Mock
     ValueOperations<String, String> valueOperations;
     @Mock
-    Sha256Utils sha256Utils; // [추가]
+    Sha256Utils sha256Utils;
 
     @Test
     @DisplayName("회원가입 인증메일 발송 - 중복된 이메일 실패")
@@ -50,7 +50,6 @@ class EmailServiceImplTest {
         String email = "exist@test.com";
         String hash = "hashed_email";
 
-        // [변경] 해시 암호화 및 해시 검색 Mocking
         given(sha256Utils.encrypt(email)).willReturn(hash);
         given(memberRepository.existsByEmailHash(hash)).willReturn(true);
 
@@ -80,7 +79,7 @@ class EmailServiceImplTest {
         String hash = "hashed_email";
 
         given(sha256Utils.encrypt(email)).willReturn(hash);
-        given(memberRepository.existsByEmailHash(hash)).willReturn(false); // 중복 없음
+        given(memberRepository.existsByEmailHash(hash)).willReturn(false);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.SIGNUP);
@@ -167,7 +166,7 @@ class EmailServiceImplTest {
         String hash = "hashed_email";
 
         given(sha256Utils.encrypt(email)).willReturn(hash);
-        given(memberRepository.existsByEmailHash(hash)).willReturn(true); // 존재해야 함
+        given(memberRepository.existsByEmailHash(hash)).willReturn(true);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.FIND_ID);
@@ -187,7 +186,7 @@ class EmailServiceImplTest {
         String hash = "hashed_email";
 
         given(sha256Utils.encrypt(email)).willReturn(hash);
-        given(memberRepository.existsByEmailHash(hash)).willReturn(true); // 존재해야 함
+        given(memberRepository.existsByEmailHash(hash)).willReturn(true);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.ACTIVATE);
@@ -207,7 +206,7 @@ class EmailServiceImplTest {
         String hash = "hashed_email";
 
         given(sha256Utils.encrypt(email)).willReturn(hash);
-        given(memberRepository.existsByEmailHash(hash)).willReturn(true); // 존재해야 함
+        given(memberRepository.existsByEmailHash(hash)).willReturn(true);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.RESET_PASSWORD);
