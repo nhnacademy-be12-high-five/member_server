@@ -1,14 +1,7 @@
 package com.nhnacademy.member_server.entity.member;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import com.nhnacademy.member_server.utils.EncryptConverter;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -33,11 +26,13 @@ public class Address {
     private String alias;
 
     @Setter
-    @Column(length = 50)
+    @Column(length = 255)
+    @Convert(converter = EncryptConverter.class)
     private String recipient;
 
     @Setter
-    @Column(length = 20)
+    @Column(length = 255)
+    @Convert(converter = EncryptConverter.class)
     private String phone;
 
 
@@ -47,10 +42,12 @@ public class Address {
 
     @Setter
     @Column(name = "road_address", length = 255)
+    @Convert(converter = EncryptConverter.class)
     private String roadAddress;
 
     @Setter
     @Column(name = "detail_address", length = 255)
+    @Convert(converter = EncryptConverter.class)
     private String detailAddress;
 
     @Setter
