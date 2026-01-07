@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.controller;
 
-import com.nhnacademy.member_server.docs.PointSwagger;
+import com.nhnacademy.member_server.controller.swagger.PointUserApi;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
 import com.nhnacademy.member_server.service.PointService;
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/points")
-public class PointController implements PointSwagger {
+public class PointController implements PointUserApi {
 
     private final PointService pointService;
 

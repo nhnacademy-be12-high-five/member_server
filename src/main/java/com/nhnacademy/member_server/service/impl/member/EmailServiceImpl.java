@@ -1,19 +1,18 @@
 package com.nhnacademy.member_server.service.impl.member;
 
 import com.nhnacademy.member_server.entity.member.EmailType;
-import com.nhnacademy.member_server.exception.BusinessException; // [필수]
-import com.nhnacademy.member_server.exception.ErrorCode; // [필수]
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.EmailService;
+import java.security.SecureRandom;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-
-import java.security.SecureRandom;
-import java.time.Duration;
 
 @Slf4j
 @Service
