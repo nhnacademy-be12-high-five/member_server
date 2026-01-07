@@ -27,6 +27,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import com.nhnacademy.member_server.utils.Sha256Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -55,6 +57,8 @@ public class AuthServiceImpl implements AuthService {
     private final SocialLoginFactory socialLoginFactory;
     private final EmailService emailService;
     private final ApplicationEventPublisher eventPublisher;
+
+    private final Sha256Utils sha256Utils;
 
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
@@ -112,13 +116,16 @@ public class AuthServiceImpl implements AuthService {
         String safeEmail = request.getEmail().trim();
         String rawPhone = request.getPhone().replaceAll("[^0-9]", "");
 
+        String emailHash = sha256Utils.encrypt(safeEmail);
+        String phoneHash = sha256Utils.encrypt(rawPhone);
+
         if (memberRepository.existsByLoginId(safeLoginId)) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
-        else if (memberRepository.existsByEmail(safeEmail)) {
+        else if (memberRepository.existsByEmailHash(emailHash)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
-        else if (memberRepository.existsByPhone(rawPhone)) {
+        else if (memberRepository.existsByPhoneHash(phoneHash)) {
             throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
         }
 
@@ -139,7 +146,9 @@ public class AuthServiceImpl implements AuthService {
                 .name(safeName)
                 .gender(request.getGender())
                 .phone(rawPhone)
+                .phoneHash(phoneHash)
                 .email(safeEmail)
+                .emailHash(emailHash)
                 .birthDate(request.getBirthDate())
                 .lastLoginAt(LocalDateTime.now())
                 .status(Status.ACTIVE)
@@ -263,6 +272,9 @@ public class AuthServiceImpl implements AuthService {
             realPhone = "010" + realPhone.substring(4);
         }
 
+        String emailHash = sha256Utils.encrypt(realEmail);
+        String phoneHash = sha256Utils.encrypt(realPhone);
+
         Gender gender = Gender.UNKNOWN;
         if ("MALE".equals(userInfo.getGender())) gender = Gender.MALE;
         else if ("FEMALE".equals(userInfo.getGender())) gender = Gender.FEMALE;
@@ -288,7 +300,9 @@ public class AuthServiceImpl implements AuthService {
                 .password(randomPassword)
                 .name(realName)
                 .email(realEmail)
+                .emailHash(emailHash)
                 .phone(realPhone)
+                .phoneHash(phoneHash)
                 .birthDate(birthDate)
                 .gender(gender)
                 .status(Status.ACTIVE)
@@ -323,7 +337,8 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
-        Member member = memberRepository.findByEmail(email)
+        String emailHash = sha256Utils.encrypt(email);
+        Member member = memberRepository.findByEmailHash(emailHash)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         return maskLoginId(member.getLoginId());
@@ -342,7 +357,8 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
-        Member member = memberRepository.findByEmail(email)
+        String emailHash = sha256Utils.encrypt(request.getEmail());
+        Member member = memberRepository.findByEmailHash(emailHash)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         if (loginId != null && !loginId.isBlank() && !member.getLoginId().equals(loginId)) {

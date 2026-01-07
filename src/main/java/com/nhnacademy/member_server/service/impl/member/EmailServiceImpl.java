@@ -7,6 +7,8 @@ import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.EmailService;
 import java.security.SecureRandom;
 import java.time.Duration;
+
+import com.nhnacademy.member_server.utils.Sha256Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -26,9 +28,12 @@ public class EmailServiceImpl implements EmailService {
     private static final long LIMIT_TIME = 3 * 60;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    private final Sha256Utils sha256Utils;
+
     @Override
     public void sendVerificationCode(String email, EmailType type) {
-        boolean exists = memberRepository.existsByEmail(email);
+        String emailHash = sha256Utils.encrypt(email);
+        boolean exists = memberRepository.existsByEmailHash(emailHash);
 
         if (type.isCheckDuplication() && exists) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);

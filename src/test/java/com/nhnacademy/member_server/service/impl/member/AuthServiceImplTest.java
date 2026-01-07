@@ -25,6 +25,7 @@ import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.member.EmailService;
+import com.nhnacademy.member_server.utils.Sha256Utils;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -70,6 +71,8 @@ class AuthServiceImplTest {
     ValueOperations<String, String> valueOperations;
     @Mock
     ApplicationEventPublisher eventPublisher;
+    @Mock
+    Sha256Utils sha256Utils; // [추가]
 
     @Test
     @DisplayName("로그인 성공 테스트")
@@ -133,7 +136,18 @@ class AuthServiceImplTest {
                 .phone("01012345678")
                 .build();
 
+        String emailHash = "emailHash";
+        String phoneHash = "phoneHash";
+
+        // [추가] 해시 Mocking
+        given(sha256Utils.encrypt(request.getEmail())).willReturn(emailHash);
+        given(sha256Utils.encrypt("01012345678")).willReturn(phoneHash); // replaceAll 처리된 번호
+
+        // [변경] 중복 체크도 해시로
         given(memberRepository.existsByLoginId("new")).willReturn(false);
+        given(memberRepository.existsByEmailHash(emailHash)).willReturn(false);
+        given(memberRepository.existsByPhoneHash(phoneHash)).willReturn(false);
+
         given(gradeRepository.findByGradeName("GENERAL")).willReturn(
                 Optional.of(Grade.builder().gradeName("GENERAL").pointRate(BigDecimal.ONE).build())
         );
@@ -195,11 +209,15 @@ class AuthServiceImplTest {
     @DisplayName("아이디 찾기 검증 및 조회 테스트")
     void findLoginIdByEmailTest() {
         String email = "test@test.com";
+        String hash = "hashedEmail";
         String code = "123456";
         Member member = Member.builder().loginId("tester").build();
 
         given(emailService.verifyCode(email, code, EmailType.FIND_ID)).willReturn(true);
-        given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
+
+        // [변경] 해시 조회 Mock
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.findByEmailHash(hash)).willReturn(Optional.of(member));
 
         String result = authService.findLoginIdByEmail(email, code);
 
@@ -211,6 +229,7 @@ class AuthServiceImplTest {
     void resetPasswordTest() {
         String loginId = "test";
         String email = "e@e.com";
+        String hash = "hashedEmail";
         String authCode = "code";
         String newPassword = "newPw";
 
@@ -228,7 +247,9 @@ class AuthServiceImplTest {
 
         given(emailService.verifyCode(email, authCode, EmailType.RESET_PASSWORD)).willReturn(true);
 
-        given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
+        // [변경] 해시 조회 Mock
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.findByEmailHash(hash)).willReturn(Optional.of(member));
 
         given(passwordEncoder.encode(newPassword)).willReturn("encoded");
 

@@ -56,10 +56,18 @@ public class Member {
     private String phone;
 
     @Setter
+    @Column(name = "phone_hash", length = 64)
+    private String phoneHash;
+
+    @Setter
     @NotNull
     @Column(nullable = false, length = 255)
     @Convert(converter = EncryptConverter.class)
     private String email;
+
+    @Setter
+    @Column(name = "email_hash", length = 64)
+    private String emailHash;
 
     @Setter
     @NotNull

@@ -13,6 +13,8 @@ import com.nhnacademy.member_server.service.member.MemberService;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+
+import com.nhnacademy.member_server.utils.Sha256Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
+    private final Sha256Utils sha256Utils;
 
     @Override
     @Transactional
@@ -62,20 +65,24 @@ public class MemberServiceImpl implements MemberService {
 
         if (req.getEmail() != null && !req.getEmail().isBlank()) {
             String newEmail = req.getEmail().trim();
+            String newEmailHash = sha256Utils.encrypt(newEmail);
 
-            if (!newEmail.equals(member.getEmail()) && memberRepository.existsByEmail(newEmail)) {
+            if (!newEmail.equals(member.getEmail()) && memberRepository.existsByEmailHash(newEmailHash)) {
                 throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
             }
             member.setEmail(newEmail);
+            member.setEmailHash(newEmailHash);
         }
 
         if (req.getPhone() != null && !req.getPhone().isBlank()) {
             String rawPhone = req.getPhone().replaceAll("[^0-9]", "");
+            String newPhoneHash = sha256Utils.encrypt(rawPhone);
 
-            if (!rawPhone.equals(member.getPhone()) && memberRepository.existsByPhone(rawPhone)) {
+            if (!rawPhone.equals(member.getPhone()) && memberRepository.existsByPhoneHash(newPhoneHash)) {
                 throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
             }
             member.setPhone(rawPhone);
+            member.setPhoneHash(newPhoneHash);
         }
 
         if (req.getGender() != null) {
@@ -131,7 +138,8 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional(readOnly = true)
     public void checkDormantMember(String loginId, String email) {
-        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
+        String emailHash = sha256Utils.encrypt(email);
+        Member member = memberRepository.findByLoginIdAndEmailHash(loginId, emailHash)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         if (member.getStatus() != Status.DORMANT) {
@@ -142,8 +150,9 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public void activateDormantMember(String loginId, String email) {
+        String emailHash = sha256Utils.encrypt(email);
 
-        Member member = memberRepository.findByLoginIdAndEmail(loginId, email)
+        Member member = memberRepository.findByLoginIdAndEmailHash(loginId, emailHash)
                 .orElseThrow(() -> {
                     return new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
                 });
