@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
-@Tag(name = "8. Point Admin API", description = "관리자용 포인트 정책 및 수동 조정 API")
+@Tag(name = "8. Point Admin", description = "관리자용 포인트 정책 및 수동 조정 API")
 public interface PointAdminApi {
 
     @Operation(summary = "포인트 정책 조회", description = "현재 적용 중인 최신 포인트 정책을 조회합니다.")

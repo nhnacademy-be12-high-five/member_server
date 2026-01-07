@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@Tag(name = "9. Point Internal API", description = "내부 서버 통신용 포인트 API (주문/결제 연동)")
+@Tag(name = "9. Point Internal", description = "내부 서버 통신용 포인트 API (주문/결제 연동)")
 public interface PointInternalApi {
 
     @Operation(summary = "포인트 트랜잭션 생성 (통합)", description = "적립, 사용, 환불, 회수 등 모든 포인트 변동 사항을 처리합니다.")
