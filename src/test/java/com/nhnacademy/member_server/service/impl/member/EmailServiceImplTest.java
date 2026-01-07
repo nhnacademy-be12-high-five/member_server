@@ -12,6 +12,7 @@ import com.nhnacademy.member_server.entity.member.EmailType;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
+import com.nhnacademy.member_server.utils.Sha256Utils;
 import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,13 +41,17 @@ class EmailServiceImplTest {
     MemberRepository memberRepository;
     @Mock
     ValueOperations<String, String> valueOperations;
-
+    @Mock
+    Sha256Utils sha256Utils;
 
     @Test
     @DisplayName("회원가입 인증메일 발송 - 중복된 이메일 실패")
     void sendSignupCodeDuplicateFailTest() {
         String email = "exist@test.com";
-        given(memberRepository.existsByEmail(email)).willReturn(true);
+        String hash = "hashed_email";
+
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.existsByEmailHash(hash)).willReturn(true);
 
         assertThatThrownBy(() -> emailService.sendVerificationCode(email, EmailType.SIGNUP))
                 .isInstanceOf(BusinessException.class)
@@ -57,7 +62,10 @@ class EmailServiceImplTest {
     @DisplayName("비밀번호 재설정 인증메일 발송 - 존재하지 않는 이메일 실패")
     void sendResetPasswordCodeNotFoundFailTest() {
         String email = "notfound@test.com";
-        given(memberRepository.existsByEmail(email)).willReturn(false);
+        String hash = "hashed_email";
+
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.existsByEmailHash(hash)).willReturn(false);
 
         assertThatThrownBy(() -> emailService.sendVerificationCode(email, EmailType.RESET_PASSWORD))
                 .isInstanceOf(BusinessException.class)
@@ -68,7 +76,10 @@ class EmailServiceImplTest {
     @DisplayName("인증메일 발송 성공 (SIGNUP)")
     void sendVerificationCodeSuccessTest() {
         String email = "new@test.com";
-        given(memberRepository.existsByEmail(email)).willReturn(false);
+        String hash = "hashed_email";
+
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.existsByEmailHash(hash)).willReturn(false);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.SIGNUP);
@@ -135,7 +146,10 @@ class EmailServiceImplTest {
     @DisplayName("메일 발송 실패 - JavaMailSender 예외 발생")
     void sendVerificationCode_MailSendException_Test() {
         String email = "new@test.com";
-        given(memberRepository.existsByEmail(email)).willReturn(false);
+        String hash = "hashed_email";
+
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.existsByEmailHash(hash)).willReturn(false);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         doThrow(new MailSendException("Mail Error")).when(mailSender).send(any(SimpleMailMessage.class));
@@ -149,7 +163,10 @@ class EmailServiceImplTest {
     @DisplayName("인증메일 발송 - FIND_ID 타입 (메일 제목/내용 확인)")
     void sendVerificationCode_FindId_Test() {
         String email = "exist@test.com";
-        given(memberRepository.existsByEmail(email)).willReturn(true);
+        String hash = "hashed_email";
+
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.existsByEmailHash(hash)).willReturn(true);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.FIND_ID);
@@ -166,7 +183,10 @@ class EmailServiceImplTest {
     @DisplayName("인증메일 발송 - ACTIVATE 타입 (메일 제목/내용 확인)")
     void sendVerificationCode_Activate_Test() {
         String email = "exist@test.com";
-        given(memberRepository.existsByEmail(email)).willReturn(true);
+        String hash = "hashed_email";
+
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.existsByEmailHash(hash)).willReturn(true);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.ACTIVATE);
@@ -183,7 +203,10 @@ class EmailServiceImplTest {
     @DisplayName("인증메일 발송 - RESET_PASSWORD 타입 (메일 제목/내용 확인)")
     void sendVerificationCode_ResetPassword_Test() {
         String email = "exist@test.com";
-        given(memberRepository.existsByEmail(email)).willReturn(true);
+        String hash = "hashed_email";
+
+        given(sha256Utils.encrypt(email)).willReturn(hash);
+        given(memberRepository.existsByEmailHash(hash)).willReturn(true);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
         emailService.sendVerificationCode(email, EmailType.RESET_PASSWORD);

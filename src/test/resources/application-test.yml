@@ -43,3 +43,8 @@ jwt:
   secret: "test_key_for_unit_test_only_9999999999"
   expiration_time: 3600000
   refresh_expiration_time: 86400000
+
+
+encrypt:
+  secret-key: "test_key_for_unit_test_only_1111"
+

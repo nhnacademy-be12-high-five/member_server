@@ -21,9 +21,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     boolean existsByLoginId(String loginId);
 
-    boolean existsByEmail(@Email String email);
+    boolean existsByEmailHash(String emailHash);
 
-    boolean existsByPhone(@NotBlank String phone);
+    boolean existsByPhoneHash(String phoneHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from Member m where m.id = :id")
@@ -37,11 +37,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByProviderId(String providerId);
 
-    Optional<Member> findByEmail(String email);
+    Optional<Member> findByEmailHash(String emailHash);
 
-    List<Member> findByLastLoginAtBeforeAndStatus(LocalDateTime dateTime, Status status);
-
-    Optional<Member> findByLoginIdAndEmail(String loginId, String email);
+    Optional<Member> findByLoginIdAndEmailHash(String loginId, String emailHash);
 
     @Modifying(clearAutomatically = true) // 영속성 컨텍스트 초기화 필수
     @Query("UPDATE Member m SET m.status = :targetStatus WHERE m.lastLoginAt < :cutOffDate AND m.status = :currentStatus")

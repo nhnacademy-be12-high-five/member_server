@@ -17,6 +17,7 @@ import com.nhnacademy.member_server.entity.member.Status;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
+import com.nhnacademy.member_server.utils.Sha256Utils;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -36,6 +37,8 @@ class MemberServiceImplTest {
 
     @Mock
     MemberRepository memberRepository;
+    @Mock
+    Sha256Utils sha256Utils;
 
 
     @Test
@@ -117,8 +120,13 @@ class MemberServiceImplTest {
                 .build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-        given(memberRepository.existsByEmail("new@test.com")).willReturn(false);
-        given(memberRepository.existsByPhone("01099998888")).willReturn(false);
+
+
+        given(sha256Utils.encrypt("new@test.com")).willReturn("newEmailHash");
+        given(sha256Utils.encrypt("01099998888")).willReturn("newPhoneHash");
+
+        given(memberRepository.existsByEmailHash("newEmailHash")).willReturn(false);
+        given(memberRepository.existsByPhoneHash("newPhoneHash")).willReturn(false);
 
         MemberResponse response = memberService.updateMember(memberId, request);
 
@@ -159,12 +167,10 @@ class MemberServiceImplTest {
                 .build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-
         memberService.updateMember(memberId, request);
 
-
-        verify(memberRepository, never()).existsByEmail(anyString());
-        verify(memberRepository, never()).existsByPhone(anyString());
+        verify(memberRepository, never()).existsByEmailHash(anyString());
+        verify(memberRepository, never()).existsByPhoneHash(anyString());
     }
 
     @Test
@@ -175,7 +181,9 @@ class MemberServiceImplTest {
         MemberUpdateRequest request = MemberUpdateRequest.builder().email("new@test.com").build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-        given(memberRepository.existsByEmail("new@test.com")).willReturn(true);
+
+        given(sha256Utils.encrypt("new@test.com")).willReturn("newHash");
+        given(memberRepository.existsByEmailHash("newHash")).willReturn(true);
 
         assertThatThrownBy(() -> memberService.updateMember(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -190,7 +198,9 @@ class MemberServiceImplTest {
         MemberUpdateRequest request = MemberUpdateRequest.builder().phone("010-9999-9999").build();
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-        given(memberRepository.existsByPhone("01099999999")).willReturn(true);
+
+        given(sha256Utils.encrypt("01099999999")).willReturn("newPhoneHash");
+        given(memberRepository.existsByPhoneHash("newPhoneHash")).willReturn(true);
 
         assertThatThrownBy(() -> memberService.updateMember(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -303,7 +313,10 @@ class MemberServiceImplTest {
     @DisplayName("휴면 회원 확인 성공")
     void checkDormantMember_Success() {
         Member member = Member.builder().status(Status.DORMANT).build();
-        given(memberRepository.findByLoginIdAndEmail("test", "t@t.com")).willReturn(Optional.of(member));
+        String hash = "hash";
+
+        given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
+        given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.of(member));
 
         memberService.checkDormantMember("test", "t@t.com");
     }
@@ -311,7 +324,9 @@ class MemberServiceImplTest {
     @Test
     @DisplayName("휴면 회원 확인 실패 - 회원이 아님")
     void checkDormantMember_Fail_NotFound() {
-        given(memberRepository.findByLoginIdAndEmail("test", "t@t.com")).willReturn(Optional.empty());
+        String hash = "hash";
+        given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
+        given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> memberService.checkDormantMember("test", "t@t.com"))
                 .isInstanceOf(BusinessException.class)
@@ -322,7 +337,10 @@ class MemberServiceImplTest {
     @DisplayName("휴면 회원 확인 실패 - 휴면 상태가 아님")
     void checkDormantMember_Fail_NotDormant() {
         Member member = Member.builder().status(Status.ACTIVE).build();
-        given(memberRepository.findByLoginIdAndEmail("test", "t@t.com")).willReturn(Optional.of(member));
+        String hash = "hash";
+
+        given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
+        given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> memberService.checkDormantMember("test", "t@t.com"))
                 .isInstanceOf(BusinessException.class)
@@ -334,7 +352,10 @@ class MemberServiceImplTest {
     @DisplayName("휴면 해제 성공")
     void activateDormantMember_Success() {
         Member member = Member.builder().status(Status.DORMANT).build();
-        given(memberRepository.findByLoginIdAndEmail("test", "t@t.com")).willReturn(Optional.of(member));
+        String hash = "hash";
+
+        given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
+        given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.of(member));
 
         memberService.activateDormantMember("test", "t@t.com");
 
@@ -345,7 +366,9 @@ class MemberServiceImplTest {
     @Test
     @DisplayName("휴면 해제 실패 - 회원 없음")
     void activateDormantMember_Fail_NotFound() {
-        given(memberRepository.findByLoginIdAndEmail("test", "t@t.com")).willReturn(Optional.empty());
+        String hash = "hash";
+        given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
+        given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> memberService.activateDormantMember("test", "t@t.com"))
                 .isInstanceOf(BusinessException.class)
@@ -356,7 +379,10 @@ class MemberServiceImplTest {
     @DisplayName("휴면 해제 실패 - 탈퇴한 회원")
     void activateDormantMember_Fail_Withdrawn() {
         Member member = Member.builder().status(Status.WITHDRAWAL).build();
-        given(memberRepository.findByLoginIdAndEmail("test", "t@t.com")).willReturn(Optional.of(member));
+        String hash = "hash";
+
+        given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
+        given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> memberService.activateDormantMember("test", "t@t.com"))
                 .isInstanceOf(BusinessException.class)
@@ -367,7 +393,10 @@ class MemberServiceImplTest {
     @DisplayName("휴면 해제 - 이미 활성 회원은 로직 건너뜀")
     void activateDormantMember_AlreadyActive() {
         Member member = Member.builder().status(Status.ACTIVE).build();
-        given(memberRepository.findByLoginIdAndEmail("test", "t@t.com")).willReturn(Optional.of(member));
+        String hash = "hash";
+
+        given(sha256Utils.encrypt("t@t.com")).willReturn(hash);
+        given(memberRepository.findByLoginIdAndEmailHash("test", hash)).willReturn(Optional.of(member));
 
         memberService.activateDormantMember("test", "t@t.com");
 
