@@ -117,6 +117,6 @@ class PointConcurrencyTest {
         Member member = memberRepository.findById(memberId).orElseThrow();
 
         // 100,000원에서 100원씩 1000번 뺐으니 0원이 되어야 함 (Lost Update가 없어야 함)
-        assertThat(member.getCurrentPoint()).isEqualTo(0L);
+        assertThat(member.getCurrentPoint()).isZero();
     }
 }
