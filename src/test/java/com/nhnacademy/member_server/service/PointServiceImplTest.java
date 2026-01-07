@@ -1,6 +1,7 @@
 package com.nhnacademy.member_server.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -15,6 +16,8 @@ import com.nhnacademy.member_server.entity.PointPolicy;
 import com.nhnacademy.member_server.entity.PointStatus;
 import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.entity.member.Member;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.repository.PointHistoryRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
@@ -28,6 +31,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -355,6 +359,239 @@ class PointServiceImplTest {
 
         // then
         then(pointPolicyRepository).should().save(any(PointPolicy.class));
+    }
+
+    @Test
+    @DisplayName("예외: 적립 요청 시 주문번호나 금액이 누락되면 실패")
+    void createTransaction_EarnOrder_InvalidInput() {
+        // given
+        Long memberId = 1L;
+        Member member = createMember(memberId, 0L);
+        given(memberRepository.findByIdForUpdate(memberId)).willReturn(Optional.of(member));
+
+        // 금액 누락
+        PointTransactionCreateRequest requestNoAmount = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.EARN_ORDER)
+                .orderId(100L)
+                .amount(null)
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.createTransaction(requestNoAmount))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("예외: 포인트 사용 시 잔액이 부족하면 실패")
+    void createTransaction_UseOrder_NotEnoughPoint() {
+        // given
+        Long memberId = 1L;
+        Member member = createMember(memberId, 1000L); // 잔액 1000원
+        given(memberRepository.findByIdForUpdate(memberId)).willReturn(Optional.of(member));
+
+        PointTransactionCreateRequest request = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.USE_ORDER)
+                .amount(5000L) // 5000원 사용 시도
+                .orderId(200L)
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.createTransaction(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POINT_NOT_ENOUGH);
+    }
+
+    @Test
+    @DisplayName("예외: 적립 정책(PointPolicy)이 DB에 없으면 실패")
+    void createTransaction_PolicyNotFound() {
+        // given
+        Long memberId = 1L;
+        Member member = createMember(memberId, 0L);
+        given(memberRepository.findByIdForUpdate(memberId)).willReturn(Optional.of(member));
+
+        // 정책 조회 시 null 반환
+        given(pointPolicyRepository.findTopByOrderByUpdatedAtDesc()).willReturn(null);
+
+        PointTransactionCreateRequest request = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.EARN_REVIEW) // 정책이 필요한 타입
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.createTransaction(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POINT_POLICY_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("분기: 적립 회수 시도했으나 이미 회수된 주문이면(중복 요청) 무시")
+    void processEarnCancel_AlreadyDeducted_Ignore() {
+        // given
+        Long memberId = 1L;
+        Member member = createMember(memberId, 5000L);
+        given(memberRepository.findByIdForUpdate(memberId)).willReturn(Optional.of(member));
+
+        // 1. 적립 내역은 존재함
+        PointHistory originalEarn = PointHistory.builder().amount(100L).build();
+        given(pointHistoryRepository.findByOrderIdAndPointEventType(300L, PointEventType.EARN_ORDER))
+                .willReturn(Optional.of(originalEarn));
+
+        // 2. ★ 이미 회수 내역(EARN_CANCEL_RETURN)이 존재함
+        given(pointHistoryRepository.existsByOrderIdAndPointEventType(300L, PointEventType.EARN_CANCEL_RETURN))
+                .willReturn(true);
+
+        PointTransactionCreateRequest request = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.EARN_CANCEL_RETURN)
+                .orderId(300L)
+                .build();
+
+        // when
+        Long result = pointServiceImpl.createTransaction(request);
+
+        // then
+        assertThat(result).isEqualTo(5000L); // 잔액 변화 없음
+        // save 호출 안됨
+        then(pointHistoryRepository).should(never()).save(any(PointHistory.class));
+    }
+
+    @Test
+    @DisplayName("분기: 적립 회수 시도했으나 애초에 적립된 적 없는 주문이면 무시")
+    void processEarnCancel_NoOriginalEarn_Ignore() {
+        // given
+        Long memberId = 1L;
+        // 1. 적립 내역 없음 (Empty)
+        given(pointHistoryRepository.findByOrderIdAndPointEventType(400L, PointEventType.EARN_ORDER))
+                .willReturn(Optional.empty());
+
+        // (Member 조회는 originalEarn 체크 후에 일어나는지, 전에 일어나는지에 따라 Mocking 필요 여부 결정됨)
+        // 코드상: originalEarn 조회 -> Member 조회 순서이므로 Member 조회까지 Mocking 필요
+        Member member = createMember(memberId, 5000L);
+        given(memberRepository.findByIdForUpdate(memberId)).willReturn(Optional.of(member));
+
+        PointTransactionCreateRequest request = PointTransactionCreateRequest.builder()
+                .memberId(memberId)
+                .pointEventType(PointEventType.EARN_CANCEL_RETURN)
+                .orderId(400L)
+                .build();
+
+        // when
+        Long result = pointServiceImpl.createTransaction(request);
+
+        // then
+        assertThat(result).isEqualTo(5000L);
+        then(pointHistoryRepository).should(never()).save(any(PointHistory.class));
+    }
+
+    @Test
+    @DisplayName("TCC 예약: 이미 예약된 주문번호면(중복 요청) 무시")
+    void tcc_Reserve_Duplicate_Ignore() {
+        // given
+        given(pointHistoryRepository.existsByOrderIdAndPointEventType(100L, PointEventType.USE_ORDER))
+                .willReturn(true); // 이미 존재
+
+        // when
+        pointServiceImpl.reservePoint(1L, 1000L, 100L);
+
+        // then
+        // save 호출 안됨 (deductPoint 내부 로직 실행 X)
+        then(pointHistoryRepository).should(never()).save(any(PointHistory.class));
+    }
+
+    @Test
+    @DisplayName("TCC 확정: 예약 내역이 없으면 실패")
+    void tcc_Confirm_NotFound() {
+        // given
+        given(pointHistoryRepository.findByOrderIdAndPointEventType(100L, PointEventType.USE_ORDER))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.confirmPoint(1L, 1000L, 100L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POINT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("TCC 확정: 이미 확정된 상태면 무시(성공 처리)")
+    void tcc_Confirm_AlreadyConfirmed() {
+        // given
+        PointHistory history = PointHistory.builder()
+                .status(PointStatus.CONFIRMED) // 이미 확정됨
+                .build();
+        given(pointHistoryRepository.findByOrderIdAndPointEventType(100L, PointEventType.USE_ORDER))
+                .willReturn(Optional.of(history));
+
+        // when
+        pointServiceImpl.confirmPoint(1L, 1000L, 100L);
+
+        // then
+        // 상태 변경 로직이 다시 돌지 않아야 함 (이미 CONFIRMED이므로)
+        // (JPA Dirty Checking이라 명시적 save 검증은 어렵지만, 에러가 안 나는 것을 확인)
+    }
+
+    @Test
+    @DisplayName("TCC 확정: 상태가 RESERVED가 아니면(예: CANCELED) 실패")
+    void tcc_Confirm_InvalidStatus() {
+        // given
+        PointHistory history = PointHistory.builder()
+                .status(PointStatus.CANCELED) // 취소된 건을 확정하려 함
+                .build();
+        given(pointHistoryRepository.findByOrderIdAndPointEventType(100L, PointEventType.USE_ORDER))
+                .willReturn(Optional.of(history));
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.confirmPoint(1L, 1000L, 100L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("TCC 취소: 이미 취소된 상태면 무시")
+    void tcc_Cancel_AlreadyCanceled() {
+        // given
+        PointHistory history = PointHistory.builder()
+                .status(PointStatus.CANCELED) // 이미 취소됨
+                .build();
+        given(pointHistoryRepository.findByOrderIdAndPointEventType(100L, PointEventType.USE_ORDER))
+                .willReturn(Optional.of(history));
+
+        // when
+        pointServiceImpl.cancelPoint(1L, 1000L, 100L);
+
+        // then
+        // createTransaction(환불) 호출되지 않음
+        then(memberRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("관리자: 차감 조정 시 잔액 부족이면 실패")
+    void admin_Adjustment_Deduct_NotEnough() {
+        // given
+        Long memberId = 1L;
+        Member member = createMember(memberId, 500L); // 잔액 500
+        given(memberRepository.findByIdForUpdate(memberId)).willReturn(Optional.of(member));
+
+        PointAdminAdjustmentRequest request = new PointAdminAdjustmentRequest(memberId, -1000L, "차감"); // 1000원 차감 시도
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.adjustmentMemberPoint(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POINT_NOT_ENOUGH);
+    }
+
+    @Test
+    @DisplayName("조회: 존재하지 않는 회원 이력 조회 시 실패")
+    void getHistory_MemberNotFound() {
+        // given
+        given(memberRepository.existsById(999L)).willReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> pointServiceImpl.getHistory(999L, Pageable.unpaged()))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_NOT_FOUND);
     }
 
     // --- Helper Method ---

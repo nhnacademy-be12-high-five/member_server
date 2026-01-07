@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(PointInternalController.class)
 @AutoConfigureMockMvc(addFilters = false) // Security 필터 해제
-class PointTccControllerTest {
+class PointInternalControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
