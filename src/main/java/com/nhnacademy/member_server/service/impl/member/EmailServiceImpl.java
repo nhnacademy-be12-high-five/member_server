@@ -5,9 +5,6 @@ import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.EmailService;
-import java.security.SecureRandom;
-import java.time.Duration;
-
 import com.nhnacademy.member_server.utils.Sha256Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +12,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import java.security.SecureRandom;
+import java.time.Duration;
 
 @Slf4j
 @Service

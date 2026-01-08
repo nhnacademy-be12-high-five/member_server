@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.global.jwt;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class WebUtilsTest {
 

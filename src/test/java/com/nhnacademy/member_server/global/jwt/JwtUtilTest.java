@@ -1,16 +1,17 @@
 package com.nhnacademy.member_server.global.jwt;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.nhnacademy.member_server.entity.member.Role;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class JwtUtilTest {
 

@@ -2,11 +2,12 @@ package com.nhnacademy.member_server.dto.response;
 
 import com.nhnacademy.member_server.entity.PointHistory;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Builder
 @Getter
