@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto.request;
+package com.nhnacademy.member_server.dto.request.point;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;

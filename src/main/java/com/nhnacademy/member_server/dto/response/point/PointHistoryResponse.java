@@ -1,6 +1,6 @@
-package com.nhnacademy.member_server.dto.response;
+package com.nhnacademy.member_server.dto.response.point;
 
-import com.nhnacademy.member_server.entity.PointHistory;
+import com.nhnacademy.member_server.entity.point.PointHistory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;

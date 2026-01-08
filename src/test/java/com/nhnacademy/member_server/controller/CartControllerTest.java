@@ -15,11 +15,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
-import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
-import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
+import com.nhnacademy.member_server.dto.request.cart.CartAddRequest;
+import com.nhnacademy.member_server.dto.request.cart.CartItemUpdateRequest;
+import com.nhnacademy.member_server.dto.response.cart.CartAddResponse;
+import com.nhnacademy.member_server.dto.response.cart.CartListResponse;
+import com.nhnacademy.member_server.dto.response.cart.CartUpdateResponse;
 import com.nhnacademy.member_server.service.CartService;
 import jakarta.servlet.http.Cookie;
 import java.util.Collections;

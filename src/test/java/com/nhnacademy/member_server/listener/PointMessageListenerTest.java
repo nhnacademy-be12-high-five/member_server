@@ -6,9 +6,9 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.nhnacademy.member_server.dto.request.PointEarnRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
-import com.nhnacademy.member_server.entity.PointEventType;
+import com.nhnacademy.member_server.dto.request.point.PointEarnRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
+import com.nhnacademy.member_server.entity.point.PointEventType;
 import com.nhnacademy.member_server.service.PointService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

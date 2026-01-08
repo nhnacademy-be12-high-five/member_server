@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.repository;
 
-import com.nhnacademy.member_server.entity.PointEventType;
-import com.nhnacademy.member_server.entity.PointHistory;
+import com.nhnacademy.member_server.entity.point.PointEventType;
+import com.nhnacademy.member_server.entity.point.PointHistory;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

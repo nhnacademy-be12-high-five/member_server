@@ -1,11 +1,11 @@
 package com.nhnacademy.member_server.service;
 
-import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
-import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
-import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
-import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
-import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
+import com.nhnacademy.member_server.dto.request.point.PointAdminAdjustmentRequest;
+import com.nhnacademy.member_server.dto.request.point.PointAdminPolicyRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
+import com.nhnacademy.member_server.dto.response.point.PointAdminPolicyResponse;
+import com.nhnacademy.member_server.dto.response.point.PointBalanceResponse;
+import com.nhnacademy.member_server.dto.response.point.PointHistoryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

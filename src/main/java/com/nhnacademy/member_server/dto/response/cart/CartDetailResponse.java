@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto.cartResponse;
+package com.nhnacademy.member_server.dto.response.cart;
 
 public record CartDetailResponse(Long bookId,
                                  String title,

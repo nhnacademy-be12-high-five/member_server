@@ -1,6 +1,6 @@
-package com.nhnacademy.member_server.dto.response;
+package com.nhnacademy.member_server.dto.response.point;
 
-import com.nhnacademy.member_server.entity.PointPolicy;
+import com.nhnacademy.member_server.entity.point.PointPolicy;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;

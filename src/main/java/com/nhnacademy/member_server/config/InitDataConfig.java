@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.config;
 
-import com.nhnacademy.member_server.entity.PointPolicy;
+import com.nhnacademy.member_server.entity.point.PointPolicy;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.GradeInitService;
 import org.springframework.boot.CommandLineRunner;

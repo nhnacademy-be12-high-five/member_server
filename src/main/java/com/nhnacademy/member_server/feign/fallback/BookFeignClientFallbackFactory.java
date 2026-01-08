@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.feign.fallback;
 
-import com.nhnacademy.member_server.dto.cartResponse.GetBookResponse;
+import com.nhnacademy.member_server.dto.response.cart.GetBookResponse;
 import com.nhnacademy.member_server.feign.BookFeignClient;
 import java.util.Collections;
 import java.util.Objects;

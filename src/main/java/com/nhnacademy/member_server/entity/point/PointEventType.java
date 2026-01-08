@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.entity;
+package com.nhnacademy.member_server.entity.point;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

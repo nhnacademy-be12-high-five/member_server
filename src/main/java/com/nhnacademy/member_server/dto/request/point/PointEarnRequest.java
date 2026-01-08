@@ -1,6 +1,6 @@
-package com.nhnacademy.member_server.dto.request;
+package com.nhnacademy.member_server.dto.request.point;
 
-import com.nhnacademy.member_server.entity.PointEventType;
+import com.nhnacademy.member_server.entity.point.PointEventType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

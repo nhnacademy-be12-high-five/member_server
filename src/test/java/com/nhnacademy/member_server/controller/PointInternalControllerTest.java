@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
-import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
-import com.nhnacademy.member_server.entity.PointEventType;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.response.point.PointBalanceResponse;
+import com.nhnacademy.member_server.entity.point.PointEventType;
 import com.nhnacademy.member_server.service.PointService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
