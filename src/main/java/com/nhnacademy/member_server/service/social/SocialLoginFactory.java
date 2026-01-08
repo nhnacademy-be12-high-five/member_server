@@ -1,9 +1,10 @@
 package com.nhnacademy.member_server.service.social;
 
+import org.springframework.stereotype.Component;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Component;
 
 
 @Component

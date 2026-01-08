@@ -1,7 +1,5 @@
 package com.nhnacademy.member_server.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
 import com.nhnacademy.member_server.entity.PointEventType;
 import com.nhnacademy.member_server.entity.member.Grade;
@@ -12,12 +10,6 @@ import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.impl.social.PaycoLoginStrategy;
 import com.nhnacademy.member_server.service.social.SocialLoginFactory;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +22,15 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @ActiveProfiles("test")
 @SpringBootTest

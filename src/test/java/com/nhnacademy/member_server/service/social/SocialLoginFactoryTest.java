@@ -1,13 +1,14 @@
 package com.nhnacademy.member_server.service.social;
 
+import org.junit.jupiter.api.Test;
+
+import java.util.Collections;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 class SocialLoginFactoryTest {
 

@@ -19,7 +19,6 @@ import com.nhnacademy.member_server.service.social.SocialLoginFactory;
 import com.nhnacademy.member_server.service.social.SocialLoginStrategy;
 import com.nhnacademy.member_server.utils.Sha256Utils;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -76,8 +75,9 @@ class AuthServiceImplTest {
         member = Member.builder()
                 .id(1L)
                 .loginId("testUser")
-                .password("encodedPassword")
+                .password("encodedPw")
                 .email("test@test.com")
+                .phone("01012345678")
                 .status(Status.ACTIVE)
                 .role(Role.USER)
                 .grade(grade)
@@ -86,210 +86,435 @@ class AuthServiceImplTest {
     }
 
     @Test
-    @DisplayName("로그인 성공")
     void loginUser_Success() {
-        String rawPassword = "password123!";
         Authentication authentication = mock(Authentication.class);
         UserDetailsImpl userDetails = new UserDetailsImpl(member);
 
-        when(memberRepository.findByLoginId(member.getLoginId())).thenReturn(Optional.of(member));
-        when(passwordEncoder.matches(rawPassword, member.getPassword())).thenReturn(true);
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
+        when(memberRepository.findByLoginId(anyString())).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+        when(authenticationManager.authenticate(any())).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(userDetails);
-        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("access-token");
-        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("refresh-token");
+        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("access");
+        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("refresh");
 
-        TokenDto result = authService.loginUser(member.getLoginId(), rawPassword);
+        TokenDto result = authService.loginUser("testUser", "pw");
 
-        assertThat(result.getAccessToken()).isEqualTo("access-token");
+        assertThat(result.getAccessToken()).isEqualTo("access");
         verify(eventPublisher).publishEvent(any(MemberLoginEvent.class));
     }
 
     @Test
-    @DisplayName("로그인 실패 - 탈퇴한 회원")
-    void loginUser_Withdrawn() {
-        member.setStatus(Status.WITHDRAWAL);
-        when(memberRepository.findByLoginId(member.getLoginId())).thenReturn(Optional.of(member));
+    void loginUser_NotFound() {
+        when(memberRepository.findByLoginId(anyString())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.loginUser(member.getLoginId(), "anyPw"))
+        assertThatThrownBy(() -> authService.loginUser("test", "pw"))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_WITHDRAWN);
+                .extracting("errorCode").isEqualTo(ErrorCode.LOGIN_FAILED);
     }
 
     @Test
-    @DisplayName("회원가입 성공 - RabbitMQ 오류가 발생해도 가입은 성공해야 함")
-    void signup_Success_EvenIfRabbitMQFails() {
-        MemberCreateRequest request = MemberCreateRequest.builder().loginId("newUser").password("pw").name("nm").phone("010-0000-0000").email("e@e.com").birthDate(LocalDate.now()).gender(Gender.MALE).build();
+    void loginUser_Dormant() {
+        Member dormantMember = Member.builder().status(Status.DORMANT).build();
+        when(memberRepository.findByLoginId(anyString())).thenReturn(Optional.of(dormantMember));
 
-        when(memberRepository.existsByLoginId(any())).thenReturn(false);
-        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
-        when(memberRepository.existsByPhoneHash(any())).thenReturn(false);
-        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
-        when(memberRepository.save(any(Member.class))).thenReturn(member);
-        doThrow(new RuntimeException("MQ Error")).when(rabbitTemplate).convertAndSend(anyString(), any(CouponIssueMessage.class));
-
-        authService.signup(request);
-
-        verify(memberRepository).save(any(Member.class));
-    }
-
-    @Test
-    @DisplayName("회원가입 실패 - 이메일 중복")
-    void signup_DuplicateEmail() {
-        MemberCreateRequest request = MemberCreateRequest.builder().loginId("new").email("dup@e.com").name("n").phone("010").build();
-        when(memberRepository.existsByLoginId(any())).thenReturn(false);
-        when(memberRepository.existsByEmailHash(any())).thenReturn(true);
-
-        assertThatThrownBy(() -> authService.signup(request))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_EMAIL);
-    }
-
-    @Test
-    @DisplayName("회원가입 실패 - 전화번호 중복")
-    void signup_DuplicatePhone() {
-        MemberCreateRequest request = MemberCreateRequest.builder().loginId("new").email("e@e.com").name("n").phone("010-1111-2222").build();
-        when(memberRepository.existsByLoginId(any())).thenReturn(false);
-        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
-        when(memberRepository.existsByPhoneHash(any())).thenReturn(true);
-
-        assertThatThrownBy(() -> authService.signup(request))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_PHONE);
-    }
-
-
-    @Test
-    @DisplayName("토큰 재발급 실패 - JWT 유효성 검증 실패")
-    void reissue_InvalidJwt() {
-        when(jwtUtil.validateToken("invalid-token")).thenReturn(false);
-
-        assertThatThrownBy(() -> authService.reissue("invalid-token"))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
-    }
-
-    @Test
-    @DisplayName("토큰 재발급 실패 - 유저가 탈퇴 상태")
-    void reissue_MemberWithdrawn() {
-        String refreshToken = "valid";
-        when(jwtUtil.validateToken(refreshToken)).thenReturn(true);
-        when(jwtUtil.getUserId(refreshToken)).thenReturn(1L);
-        when(valueOperations.get("RT:1")).thenReturn(refreshToken);
-
-        member.setStatus(Status.WITHDRAWAL);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-
-        assertThatThrownBy(() -> authService.reissue(refreshToken))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("소셜 로그인 - 기존 회원 로그인")
-    void loginSocial_ExistingUser() {
-        String provider = "PAYCO";
-        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().provider(provider).providerId("123").build();
-        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
-
-        when(socialLoginFactory.getStrategy(provider)).thenReturn(strategy);
-        when(strategy.getUserInfo(anyString())).thenReturn(userInfo);
-        when(memberRepository.findByProviderId("123")).thenReturn(Optional.of(member));
-        when(jwtUtil.createAccessToken(any(), any())).thenReturn("access");
-
-        TokenDto result = authService.loginSocial(provider, "code");
-
-        assertThat(result.getAccessToken()).isEqualTo("access");
-        verify(memberRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("소셜 로그인 - 기존 회원이지만 휴면 상태")
-    void loginSocial_Dormant() {
-        String provider = "PAYCO";
-        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().providerId("123").build();
-        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
-        member.setStatus(Status.DORMANT);
-
-        when(socialLoginFactory.getStrategy(provider)).thenReturn(strategy);
-        when(strategy.getUserInfo(any())).thenReturn(userInfo);
-        when(memberRepository.findByProviderId("123")).thenReturn(Optional.of(member));
-
-        assertThatThrownBy(() -> authService.loginSocial(provider, "code"))
+        assertThatThrownBy(() -> authService.loginUser("test", "pw"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_DORMANT);
     }
 
     @Test
-    @DisplayName("소셜 회원가입 - 생일 파싱 로직 테스트 (8자리, 4자리, 실패)")
-    void socialSignup_BirthdayParsing() {
-        String provider = "PAYCO";
-        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
-        when(socialLoginFactory.getStrategy(provider)).thenReturn(strategy);
-        when(memberRepository.findByProviderId(any())).thenReturn(Optional.empty());
+    void loginUser_Withdrawn() {
+        Member withdrawnMember = Member.builder().status(Status.WITHDRAWAL).build();
+        when(memberRepository.findByLoginId(anyString())).thenReturn(Optional.of(withdrawnMember));
+
+        assertThatThrownBy(() -> authService.loginUser("test", "pw"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_WITHDRAWN);
+    }
+
+    @Test
+    void loginUser_PasswordMismatch() {
+        when(memberRepository.findByLoginId(anyString())).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.loginUser("test", "wrongPw"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.LOGIN_FAILED);
+    }
+
+    @Test
+    void signup_Success() {
+        MemberCreateRequest request = MemberCreateRequest.builder()
+                .loginId("new").password("pw").name("nm").phone("010").email("e@e.com").gender(Gender.MALE).birthDate(LocalDate.now()).build();
+
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
+        when(memberRepository.existsByPhoneHash(any())).thenReturn(false);
         when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
-        when(jwtUtil.createAccessToken(any(), any())).thenReturn("token");
+        when(memberRepository.save(any())).thenReturn(member);
 
-        when(strategy.getUserInfo("code1")).thenReturn(OAuth2UserInfo.builder().providerId("1").birthday("20000101").build());
-        when(memberRepository.save(any(Member.class))).thenAnswer(inv -> inv.getArgument(0));
-        TokenDto t1 = authService.loginSocial(provider, "code1");
+        authService.signup(request);
 
-        when(strategy.getUserInfo("code2")).thenReturn(OAuth2UserInfo.builder().providerId("2").birthday("0505").build());
-        authService.loginSocial(provider, "code2");
-
-        when(strategy.getUserInfo("code3")).thenReturn(OAuth2UserInfo.builder().providerId("3").birthday("invalid").build());
-        authService.loginSocial(provider, "code3");
-
-        verify(memberRepository, times(3)).save(any(Member.class));
-    }
-
-
-    @Test
-    @DisplayName("아이디 찾기 - 인증 실패")
-    void findLoginIdByEmail_AuthFail() {
-        when(emailService.verifyCode(any(), any(), eq(EmailType.FIND_ID))).thenReturn(false);
-
-        assertThatThrownBy(() -> authService.findLoginIdByEmail("e@e.com", "123"))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.AUTH_CODE_MISMATCH);
+        verify(rabbitTemplate).convertAndSend(eq("high-five-coupon-welcome-queue"), any(CouponIssueMessage.class));
     }
 
     @Test
-    @DisplayName("아이디 찾기 - 성공 및 마스킹 검증")
-    void findLoginIdByEmail_Success() {
-        when(emailService.verifyCode(any(), any(), eq(EmailType.FIND_ID))).thenReturn(true);
-        when(sha256Utils.encrypt(anyString())).thenReturn("hash");
-        when(memberRepository.findByEmailHash("hash")).thenReturn(Optional.of(member));
+    void signup_GradeNotFound_CreateGrade() {
+        MemberCreateRequest request = MemberCreateRequest.builder()
+                .loginId("new").password("pw").name("nm").phone("010").email("e@e.com").gender(Gender.MALE).birthDate(LocalDate.now()).build();
 
-        String result = authService.findLoginIdByEmail("test@test.com", "123456");
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
+        when(memberRepository.existsByPhoneHash(any())).thenReturn(false);
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.empty());
+        when(gradeRepository.save(any())).thenReturn(grade);
+        when(memberRepository.save(any())).thenReturn(member);
 
-        assertThat(result).isEqualTo("te******");
+        authService.signup(request);
+
+        verify(gradeRepository).save(any(Grade.class));
     }
 
     @Test
-    @DisplayName("아이디 찾기 - 짧은 아이디 마스킹 (2글자)")
-    void findLoginIdByEmail_ShortId() {
-        Member shortMember = Member.builder().loginId("ab").email("a@a.com").build();
+    void signup_RabbitMQException() {
+        MemberCreateRequest request = MemberCreateRequest.builder()
+                .loginId("new").password("pw").name("nm").phone("010").email("e@e.com").gender(Gender.MALE).birthDate(LocalDate.now()).build();
 
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
+        when(memberRepository.existsByPhoneHash(any())).thenReturn(false);
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any())).thenReturn(member);
+        doThrow(new RuntimeException()).when(rabbitTemplate).convertAndSend(anyString(), any(CouponIssueMessage.class));
+
+        authService.signup(request);
+
+        verify(memberRepository).save(any());
+    }
+
+    @Test
+    void signup_DuplicateId() {
+        MemberCreateRequest request = MemberCreateRequest.builder().loginId("dup").name("n").email("e").phone("p").build();
+        when(memberRepository.existsByLoginId(any())).thenReturn(true);
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_LOGIN_ID);
+    }
+
+    @Test
+    void signup_DuplicateEmail() {
+        MemberCreateRequest request = MemberCreateRequest.builder().loginId("new").email("dup").name("n").phone("p").build();
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(true);
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+    }
+
+    @Test
+    void signup_DuplicatePhone() {
+        MemberCreateRequest request = MemberCreateRequest.builder().loginId("new").email("new").phone("dup").name("n").build();
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
+        when(memberRepository.existsByPhoneHash(any())).thenReturn(true);
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_PHONE);
+    }
+
+    @Test
+    void reissue_Success() {
+        String token = "rt";
+        when(jwtUtil.validateToken(token)).thenReturn(true);
+        when(jwtUtil.getUserId(token)).thenReturn(1L);
+        when(valueOperations.get("RT:1")).thenReturn(token);
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(jwtUtil.createAccessToken(any(), any())).thenReturn("at");
+        when(jwtUtil.createRefreshToken(any())).thenReturn("rt");
+
+        TokenDto result = authService.reissue(token);
+        assertThat(result.getAccessToken()).isEqualTo("at");
+    }
+
+    @Test
+    void reissue_InvalidToken() {
+        when(jwtUtil.validateToken(any())).thenReturn(false);
+        assertThatThrownBy(() -> authService.reissue("bad"))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    void reissue_TokenMismatch() {
+        String token = "rt";
+        when(jwtUtil.validateToken(token)).thenReturn(true);
+        when(jwtUtil.getUserId(token)).thenReturn(1L);
+        when(valueOperations.get("RT:1")).thenReturn("other");
+        assertThatThrownBy(() -> authService.reissue(token))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    void reissue_MemberNotFound() {
+        String token = "rt";
+        when(jwtUtil.validateToken(token)).thenReturn(true);
+        when(jwtUtil.getUserId(token)).thenReturn(1L);
+        when(valueOperations.get("RT:1")).thenReturn(token);
+        when(memberRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> authService.reissue(token))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    void reissue_MemberWithdrawn() {
+        String token = "rt";
+        Member withdrawn = Member.builder().status(Status.WITHDRAWAL).build();
+        when(jwtUtil.validateToken(token)).thenReturn(true);
+        when(jwtUtil.getUserId(token)).thenReturn(1L);
+        when(valueOperations.get("RT:1")).thenReturn(token);
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(withdrawn));
+        assertThatThrownBy(() -> authService.reissue(token))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    void logout_Success() {
+        when(jwtUtil.getRemainingTime(any())).thenReturn(1000L);
+        authService.logout("at", 1L);
+        verify(redisTemplate).delete("RT:1");
+        verify(valueOperations).set(any(), eq("logout"), anyLong(), any());
+        verify(eventPublisher).publishEvent(any(MemberLogoutEvent.class));
+    }
+
+    @Test
+    void logout_ExpiredToken() {
+        when(jwtUtil.getRemainingTime(any())).thenReturn(0L);
+        authService.logout("at", 1L);
+        verify(redisTemplate).delete("RT:1");
+        verify(valueOperations, never()).set(any(), any(), anyLong(), any());
+    }
+
+    @Test
+    void loginSocial_Existing_Success() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().providerId("pid").build();
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.of(member));
+        when(jwtUtil.createAccessToken(any(), any())).thenReturn("at");
+        when(jwtUtil.createRefreshToken(any())).thenReturn("rt");
+
+        authService.loginSocial("payco", "code");
+        verify(jwtUtil).createAccessToken(any(), any());
+    }
+
+    @Test
+    void loginSocial_Existing_Dormant() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().providerId("pid").build();
+        Member dormant = Member.builder().status(Status.DORMANT).build();
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.of(dormant));
+
+        assertThatThrownBy(() -> authService.loginSocial("payco", "code"))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.MEMBER_DORMANT);
+    }
+
+    @Test
+    void loginSocial_Existing_Withdrawn() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().providerId("pid").build();
+        Member withdrawn = Member.builder().status(Status.WITHDRAWAL).build();
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.of(withdrawn));
+
+        assertThatThrownBy(() -> authService.loginSocial("payco", "code"))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.MEMBER_WITHDRAWN);
+    }
+
+    @Test
+    void loginSocial_New_FullInfo() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder()
+                .providerId("pid")
+                .provider("PAYCO")
+                .name("name")
+                .email("e@e.com")
+                .mobile("01012345678")
+                .gender("MALE")
+                .birthday("20000101")
+                .build();
+
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.empty());
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any())).thenReturn(member);
+
+        authService.loginSocial("PAYCO", "code");
+        verify(memberRepository).save(any());
+    }
+
+    @Test
+    void loginSocial_New_PhonePrefix() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder()
+                .providerId("pid").provider("PAYCO").mobile("821012345678").build();
+
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.empty());
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any())).thenReturn(member);
+
+        authService.loginSocial("PAYCO", "code");
+        verify(memberRepository).save(any());
+    }
+
+    @Test
+    void loginSocial_New_GenderFemale() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder()
+                .providerId("pid").provider("PAYCO").gender("FEMALE").build();
+
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.empty());
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any())).thenReturn(member);
+
+        authService.loginSocial("PAYCO", "code");
+        verify(memberRepository).save(any());
+    }
+
+    @Test
+    void loginSocial_New_BirthdayLength4() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder()
+                .providerId("pid").provider("PAYCO").birthday("0101").build();
+
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.empty());
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any())).thenReturn(member);
+
+        authService.loginSocial("PAYCO", "code");
+        verify(memberRepository).save(any());
+    }
+
+    @Test
+    void loginSocial_New_BirthdayParseError() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder()
+                .providerId("pid").provider("PAYCO").birthday("invalid").build();
+
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.empty());
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any())).thenReturn(member);
+
+        authService.loginSocial("PAYCO", "code");
+        verify(memberRepository).save(any());
+    }
+
+    @Test
+    void loginSocial_New_RabbitMQError() {
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().providerId("pid").provider("PAYCO").build();
+
+        when(socialLoginFactory.getStrategy(any())).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("pid")).thenReturn(Optional.empty());
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any())).thenReturn(member);
+        doThrow(new RuntimeException()).when(rabbitTemplate).convertAndSend(anyString(), any(CouponIssueMessage.class));
+
+        authService.loginSocial("PAYCO", "code");
+        verify(memberRepository).save(any());
+    }
+
+    @Test
+    void findLoginIdByEmail_VerifyFail() {
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(false);
+        assertThatThrownBy(() -> authService.findLoginIdByEmail("e", "c"))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.AUTH_CODE_MISMATCH);
+    }
+
+    @Test
+    void findLoginIdByEmail_MemberNotFound() {
         when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
-        when(sha256Utils.encrypt(anyString())).thenReturn("hash");
-        when(memberRepository.findByEmailHash("hash")).thenReturn(Optional.of(shortMember));
-
-        String result = authService.findLoginIdByEmail("a@a.com", "123");
-        assertThat(result).isEqualTo("a*");
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> authService.findLoginIdByEmail("e", "c"))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
     }
 
     @Test
-    @DisplayName("비밀번호 재설정 - 요청한 LoginId와 이메일 소유주 불일치")
+    void findLoginIdByEmail_Success_Masking() {
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.of(member));
+        String id = authService.findLoginIdByEmail("e", "c");
+        assertThat(id).isEqualTo("te******");
+    }
+
+    @Test
+    void findLoginIdByEmail_Success_MaskingShort() {
+        Member shortMem = Member.builder().loginId("ab").build();
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.of(shortMem));
+        String id = authService.findLoginIdByEmail("e", "c");
+        assertThat(id).isEqualTo("a*");
+    }
+
+    @Test
+    void findLoginIdByEmail_Success_MaskingTiny() {
+        Member tinyMem = Member.builder().loginId("a").build();
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.of(tinyMem));
+        String id = authService.findLoginIdByEmail("e", "c");
+        assertThat(id).isEqualTo("a");
+    }
+
+    @Test
+    void findLoginIdByEmail_Success_MaskingNull() {
+        Member nullMem = Member.builder().loginId(null).build();
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.of(nullMem));
+        String id = authService.findLoginIdByEmail("e", "c");
+        assertThat(id).isNull();
+    }
+
+    @Test
+    void resetPassword_VerifyFail() {
+        PasswordResetRequest req = new PasswordResetRequest("id", "e", "c", "p");
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(false);
+        assertThatThrownBy(() -> authService.resetPassword(req))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.AUTH_CODE_MISMATCH);
+    }
+
+    @Test
+    void resetPassword_MemberNotFound() {
+        PasswordResetRequest req = new PasswordResetRequest("id", "e", "c", "p");
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> authService.resetPassword(req))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
     void resetPassword_IdMismatch() {
-        PasswordResetRequest request = new PasswordResetRequest("wrongId", "test@test.com", "123", "pw");
-
+        PasswordResetRequest req = new PasswordResetRequest("diff", "e", "c", "p");
         when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
-        when(sha256Utils.encrypt(anyString())).thenReturn("hash");
-        when(memberRepository.findByEmailHash("hash")).thenReturn(Optional.of(member));
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.of(member));
+        assertThatThrownBy(() -> authService.resetPassword(req))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
 
-        assertThatThrownBy(() -> authService.resetPassword(request))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    @Test
+    void resetPassword_Success() {
+        PasswordResetRequest req = new PasswordResetRequest("testUser", "e", "c", "p");
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(memberRepository.findByEmailHash(any())).thenReturn(Optional.of(member));
+        authService.resetPassword(req);
+        verify(memberRepository).save(member);
     }
 }
