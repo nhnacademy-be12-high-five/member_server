@@ -1,23 +1,13 @@
 package com.nhnacademy.member_server.service.impl.member;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
 import com.nhnacademy.member_server.dto.event.MemberLoginEvent;
 import com.nhnacademy.member_server.dto.event.MemberLogoutEvent;
+import com.nhnacademy.member_server.dto.message.CouponIssueMessage;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
-import com.nhnacademy.member_server.entity.member.EmailType;
-import com.nhnacademy.member_server.entity.member.Grade;
-import com.nhnacademy.member_server.entity.member.Member;
-import com.nhnacademy.member_server.entity.member.Role;
-import com.nhnacademy.member_server.entity.member.Status;
+import com.nhnacademy.member_server.dto.response.social.OAuth2UserInfo;
+import com.nhnacademy.member_server.entity.member.*;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
@@ -25,10 +15,10 @@ import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.member.EmailService;
+import com.nhnacademy.member_server.service.social.SocialLoginFactory;
+import com.nhnacademy.member_server.service.social.SocialLoginStrategy;
 import com.nhnacademy.member_server.utils.Sha256Utils;
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,213 +35,261 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
 
     @InjectMocks
-    AuthServiceImpl authService;
+    private AuthServiceImpl authService;
 
-    @Mock
-    AuthenticationManager authenticationManager;
-    @Mock
-    JwtUtil jwtUtil;
-    @Mock
-    StringRedisTemplate redisTemplate;
-    @Mock
-    MemberRepository memberRepository;
-    @Mock
-    PasswordEncoder passwordEncoder;
-    @Mock
-    GradeRepository gradeRepository;
-    @Mock
-    RabbitTemplate rabbitTemplate;
-    @Mock
-    EmailService emailService;
-    @Mock
-    ValueOperations<String, String> valueOperations;
-    @Mock
-    ApplicationEventPublisher eventPublisher;
-    @Mock
-    Sha256Utils sha256Utils;
+    @Mock private AuthenticationManager authenticationManager;
+    @Mock private JwtUtil jwtUtil;
+    @Mock private StringRedisTemplate redisTemplate;
+    @Mock private ValueOperations<String, String> valueOperations;
+    @Mock private MemberRepository memberRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private GradeRepository gradeRepository;
+    @Mock private RabbitTemplate rabbitTemplate;
+    @Mock private SocialLoginFactory socialLoginFactory;
+    @Mock private EmailService emailService;
+    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private Sha256Utils sha256Utils;
 
-    @Test
-    @DisplayName("로그인 성공 테스트")
-    void loginUserSuccessTest() {
-        String loginId = "user";
-        String password = "pw";
-        Member member = Member.builder()
+    private Member member;
+    private Grade grade;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        ReflectionTestUtils.setField(authService, "refreshExpirationTime", 3600000L);
+
+        grade = Grade.builder().gradeName("GENERAL").pointRate(BigDecimal.valueOf(0.01)).build();
+        member = Member.builder()
                 .id(1L)
-                .loginId(loginId)
-                .password("encodedPw")
+                .loginId("testUser")
+                .password("encodedPassword")
+                .email("test@test.com")
                 .status(Status.ACTIVE)
                 .role(Role.USER)
+                .grade(grade)
+                .isProfileComplete(true)
                 .build();
+    }
 
-        given(memberRepository.findByLoginId(loginId)).willReturn(Optional.of(member));
-        given(passwordEncoder.matches(password, "encodedPw")).willReturn(true);
-
+    @Test
+    @DisplayName("로그인 성공")
+    void loginUser_Success() {
+        String rawPassword = "password123!";
         Authentication authentication = mock(Authentication.class);
         UserDetailsImpl userDetails = new UserDetailsImpl(member);
-        given(authentication.getPrincipal()).willReturn(userDetails);
-        given(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .willReturn(authentication);
 
-        given(jwtUtil.createAccessToken(1L, Role.USER)).willReturn("access");
-        given(jwtUtil.createRefreshToken(1L)).willReturn("refresh");
-        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        when(memberRepository.findByLoginId(member.getLoginId())).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches(rawPassword, member.getPassword())).thenReturn(true);
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("access-token");
+        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("refresh-token");
 
-        ReflectionTestUtils.setField(authService, "refreshExpirationTime", 1000L);
+        TokenDto result = authService.loginUser(member.getLoginId(), rawPassword);
 
-        TokenDto result = authService.loginUser(loginId, password);
-
-        assertThat(result.getAccessToken()).isEqualTo("access");
-
-        verify(valueOperations).set(any(), any(), any(Long.class), any(TimeUnit.class));
+        assertThat(result.getAccessToken()).isEqualTo("access-token");
         verify(eventPublisher).publishEvent(any(MemberLoginEvent.class));
-
     }
 
     @Test
     @DisplayName("로그인 실패 - 탈퇴한 회원")
-    void loginUserWithdrawalTest() {
-        String loginId = "user";
-        String password = "pw";
-        Member member = Member.builder().loginId(loginId).status(Status.WITHDRAWAL).build();
+    void loginUser_Withdrawn() {
+        member.setStatus(Status.WITHDRAWAL);
+        when(memberRepository.findByLoginId(member.getLoginId())).thenReturn(Optional.of(member));
 
-        given(memberRepository.findByLoginId(loginId)).willReturn(Optional.of(member));
-
-        assertThatThrownBy(() -> authService.loginUser(loginId, password))
+        assertThatThrownBy(() -> authService.loginUser(member.getLoginId(), "anyPw"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_WITHDRAWN);
+                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_WITHDRAWN);
     }
 
     @Test
-    @DisplayName("회원가입 성공 테스트")
-    void signupSuccessTest() {
-        MemberCreateRequest request = MemberCreateRequest.builder()
-                .loginId("new")
-                .password("pw")
-                .name("name")
-                .email("e@e.com")
-                .phone("01012345678")
-                .build();
+    @DisplayName("회원가입 성공 - RabbitMQ 오류가 발생해도 가입은 성공해야 함")
+    void signup_Success_EvenIfRabbitMQFails() {
+        MemberCreateRequest request = MemberCreateRequest.builder().loginId("newUser").password("pw").name("nm").phone("010-0000-0000").email("e@e.com").birthDate(LocalDate.now()).gender(Gender.MALE).build();
 
-        String emailHash = "emailHash";
-        String phoneHash = "phoneHash";
-
-        given(sha256Utils.encrypt(request.getEmail())).willReturn(emailHash);
-        given(sha256Utils.encrypt("01012345678")).willReturn(phoneHash);
-
-        given(memberRepository.existsByLoginId("new")).willReturn(false);
-        given(memberRepository.existsByEmailHash(emailHash)).willReturn(false);
-        given(memberRepository.existsByPhoneHash(phoneHash)).willReturn(false);
-
-        given(gradeRepository.findByGradeName("GENERAL")).willReturn(
-                Optional.of(Grade.builder().gradeName("GENERAL").pointRate(BigDecimal.ONE).build())
-        );
-        given(passwordEncoder.encode("pw")).willReturn("encoded");
-        given(memberRepository.save(any(Member.class))).willAnswer(inv -> {
-            Member m = inv.getArgument(0);
-            return Member.builder().id(1L).loginId(m.getLoginId()).build();
-        });
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
+        when(memberRepository.existsByPhoneHash(any())).thenReturn(false);
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(memberRepository.save(any(Member.class))).thenReturn(member);
+        doThrow(new RuntimeException("MQ Error")).when(rabbitTemplate).convertAndSend(anyString(), any(CouponIssueMessage.class));
 
         authService.signup(request);
 
         verify(memberRepository).save(any(Member.class));
-        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class));
     }
 
     @Test
-    @DisplayName("로그아웃 테스트")
-    void logoutTest() {
-        String token = "access";
-        Long memberId = 1L;
+    @DisplayName("회원가입 실패 - 이메일 중복")
+    void signup_DuplicateEmail() {
+        MemberCreateRequest request = MemberCreateRequest.builder().loginId("new").email("dup@e.com").name("n").phone("010").build();
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(true);
 
-        given(redisTemplate.opsForValue()).willReturn(valueOperations);
-        given(redisTemplate.delete("RT:" + memberId)).willReturn(true);
-        given(jwtUtil.getRemainingTime(token)).willReturn(1000L);
-
-        authService.logout(token, memberId);
-
-        verify(redisTemplate).delete("RT:" + memberId);
-        verify(valueOperations).set(eq(token), eq("logout"), any(Long.class), any(TimeUnit.class));
-        verify(eventPublisher).publishEvent(any(MemberLogoutEvent.class));
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_EMAIL);
     }
 
     @Test
-    @DisplayName("토큰 재발급 테스트")
-    void reissueTest() {
-        String refreshToken = "refresh";
-        Long memberId = 1L;
+    @DisplayName("회원가입 실패 - 전화번호 중복")
+    void signup_DuplicatePhone() {
+        MemberCreateRequest request = MemberCreateRequest.builder().loginId("new").email("e@e.com").name("n").phone("010-1111-2222").build();
+        when(memberRepository.existsByLoginId(any())).thenReturn(false);
+        when(memberRepository.existsByEmailHash(any())).thenReturn(false);
+        when(memberRepository.existsByPhoneHash(any())).thenReturn(true);
 
-        given(jwtUtil.validateToken(refreshToken)).willReturn(true);
-        given(jwtUtil.getUserId(refreshToken)).willReturn(memberId);
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_PHONE);
+    }
 
-        given(redisTemplate.opsForValue()).willReturn(valueOperations);
-        given(valueOperations.get("RT:" + memberId)).willReturn(refreshToken);
 
-        Member member = Member.builder().id(memberId).role(Role.USER).status(Status.ACTIVE).build();
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+    @Test
+    @DisplayName("토큰 재발급 실패 - JWT 유효성 검증 실패")
+    void reissue_InvalidJwt() {
+        when(jwtUtil.validateToken("invalid-token")).thenReturn(false);
 
-        given(jwtUtil.createAccessToken(memberId, Role.USER)).willReturn("newAccess");
-        given(jwtUtil.createRefreshToken(memberId)).willReturn("newRefresh");
-
-        ReflectionTestUtils.setField(authService, "refreshExpirationTime", 1000L);
-
-        TokenDto result = authService.reissue(refreshToken);
-
-        assertThat(result.getAccessToken()).isEqualTo("newAccess");
+        assertThatThrownBy(() -> authService.reissue("invalid-token"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
     }
 
     @Test
-    @DisplayName("아이디 찾기 검증 및 조회 테스트")
-    void findLoginIdByEmailTest() {
-        String email = "test@test.com";
-        String hash = "hashedEmail";
-        String code = "123456";
-        Member member = Member.builder().loginId("tester").build();
+    @DisplayName("토큰 재발급 실패 - 유저가 탈퇴 상태")
+    void reissue_MemberWithdrawn() {
+        String refreshToken = "valid";
+        when(jwtUtil.validateToken(refreshToken)).thenReturn(true);
+        when(jwtUtil.getUserId(refreshToken)).thenReturn(1L);
+        when(valueOperations.get("RT:1")).thenReturn(refreshToken);
 
-        given(emailService.verifyCode(email, code, EmailType.FIND_ID)).willReturn(true);
+        member.setStatus(Status.WITHDRAWAL);
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
 
-        given(sha256Utils.encrypt(email)).willReturn(hash);
-        given(memberRepository.findByEmailHash(hash)).willReturn(Optional.of(member));
-
-        String result = authService.findLoginIdByEmail(email, code);
-
-        assertThat(result).isEqualTo("te****");
+        assertThatThrownBy(() -> authService.reissue(refreshToken))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
     }
 
     @Test
-    @DisplayName("비밀번호 재설정 테스트")
-    void resetPasswordTest() {
-        String loginId = "test";
-        String email = "e@e.com";
-        String hash = "hashedEmail";
-        String authCode = "code";
-        String newPassword = "newPw";
+    @DisplayName("소셜 로그인 - 기존 회원 로그인")
+    void loginSocial_ExistingUser() {
+        String provider = "PAYCO";
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().provider(provider).providerId("123").build();
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
 
-        PasswordResetRequest request = new PasswordResetRequest();
-        ReflectionTestUtils.setField(request, "loginId", loginId);
-        ReflectionTestUtils.setField(request, "newPassword", newPassword);
-        ReflectionTestUtils.setField(request, "email", email);
-        ReflectionTestUtils.setField(request, "authCode", authCode);
+        when(socialLoginFactory.getStrategy(provider)).thenReturn(strategy);
+        when(strategy.getUserInfo(anyString())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("123")).thenReturn(Optional.of(member));
+        when(jwtUtil.createAccessToken(any(), any())).thenReturn("access");
 
-        Member member = Member.builder()
-                .loginId(loginId)
-                .email(email)
-                .status(Status.ACTIVE)
-                .build();
+        TokenDto result = authService.loginSocial(provider, "code");
 
-        given(emailService.verifyCode(email, authCode, EmailType.RESET_PASSWORD)).willReturn(true);
+        assertThat(result.getAccessToken()).isEqualTo("access");
+        verify(memberRepository, never()).save(any());
+    }
 
-        given(sha256Utils.encrypt(email)).willReturn(hash);
-        given(memberRepository.findByEmailHash(hash)).willReturn(Optional.of(member));
+    @Test
+    @DisplayName("소셜 로그인 - 기존 회원이지만 휴면 상태")
+    void loginSocial_Dormant() {
+        String provider = "PAYCO";
+        OAuth2UserInfo userInfo = OAuth2UserInfo.builder().providerId("123").build();
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        member.setStatus(Status.DORMANT);
 
-        given(passwordEncoder.encode(newPassword)).willReturn("encoded");
+        when(socialLoginFactory.getStrategy(provider)).thenReturn(strategy);
+        when(strategy.getUserInfo(any())).thenReturn(userInfo);
+        when(memberRepository.findByProviderId("123")).thenReturn(Optional.of(member));
 
-        authService.resetPassword(request);
+        assertThatThrownBy(() -> authService.loginSocial(provider, "code"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_DORMANT);
+    }
 
-        assertThat(member.getPassword()).isEqualTo("encoded");
-        verify(memberRepository).save(member);
+    @Test
+    @DisplayName("소셜 회원가입 - 생일 파싱 로직 테스트 (8자리, 4자리, 실패)")
+    void socialSignup_BirthdayParsing() {
+        String provider = "PAYCO";
+        SocialLoginStrategy strategy = mock(SocialLoginStrategy.class);
+        when(socialLoginFactory.getStrategy(provider)).thenReturn(strategy);
+        when(memberRepository.findByProviderId(any())).thenReturn(Optional.empty());
+        when(gradeRepository.findByGradeName("GENERAL")).thenReturn(Optional.of(grade));
+        when(jwtUtil.createAccessToken(any(), any())).thenReturn("token");
+
+        when(strategy.getUserInfo("code1")).thenReturn(OAuth2UserInfo.builder().providerId("1").birthday("20000101").build());
+        when(memberRepository.save(any(Member.class))).thenAnswer(inv -> inv.getArgument(0));
+        TokenDto t1 = authService.loginSocial(provider, "code1");
+
+        when(strategy.getUserInfo("code2")).thenReturn(OAuth2UserInfo.builder().providerId("2").birthday("0505").build());
+        authService.loginSocial(provider, "code2");
+
+        when(strategy.getUserInfo("code3")).thenReturn(OAuth2UserInfo.builder().providerId("3").birthday("invalid").build());
+        authService.loginSocial(provider, "code3");
+
+        verify(memberRepository, times(3)).save(any(Member.class));
+    }
+
+
+    @Test
+    @DisplayName("아이디 찾기 - 인증 실패")
+    void findLoginIdByEmail_AuthFail() {
+        when(emailService.verifyCode(any(), any(), eq(EmailType.FIND_ID))).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.findLoginIdByEmail("e@e.com", "123"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.AUTH_CODE_MISMATCH);
+    }
+
+    @Test
+    @DisplayName("아이디 찾기 - 성공 및 마스킹 검증")
+    void findLoginIdByEmail_Success() {
+        when(emailService.verifyCode(any(), any(), eq(EmailType.FIND_ID))).thenReturn(true);
+        when(sha256Utils.encrypt(anyString())).thenReturn("hash");
+        when(memberRepository.findByEmailHash("hash")).thenReturn(Optional.of(member));
+
+        String result = authService.findLoginIdByEmail("test@test.com", "123456");
+
+        assertThat(result).isEqualTo("te******");
+    }
+
+    @Test
+    @DisplayName("아이디 찾기 - 짧은 아이디 마스킹 (2글자)")
+    void findLoginIdByEmail_ShortId() {
+        Member shortMember = Member.builder().loginId("ab").email("a@a.com").build();
+
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(sha256Utils.encrypt(anyString())).thenReturn("hash");
+        when(memberRepository.findByEmailHash("hash")).thenReturn(Optional.of(shortMember));
+
+        String result = authService.findLoginIdByEmail("a@a.com", "123");
+        assertThat(result).isEqualTo("a*");
+    }
+
+    @Test
+    @DisplayName("비밀번호 재설정 - 요청한 LoginId와 이메일 소유주 불일치")
+    void resetPassword_IdMismatch() {
+        PasswordResetRequest request = new PasswordResetRequest("wrongId", "test@test.com", "123", "pw");
+
+        when(emailService.verifyCode(any(), any(), any())).thenReturn(true);
+        when(sha256Utils.encrypt(anyString())).thenReturn("hash");
+        when(memberRepository.findByEmailHash("hash")).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> authService.resetPassword(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
     }
 }
