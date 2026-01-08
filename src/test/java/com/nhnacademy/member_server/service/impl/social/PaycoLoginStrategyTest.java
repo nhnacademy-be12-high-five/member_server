@@ -1,10 +1,5 @@
 package com.nhnacademy.member_server.service.impl.social;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-
 import com.nhnacademy.member_server.dto.response.social.OAuth2UserInfo;
 import com.nhnacademy.member_server.dto.response.social.PaycoMemberResponse;
 import com.nhnacademy.member_server.dto.response.social.PaycoTokenResponse;
@@ -16,6 +11,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 class PaycoLoginStrategyTest {

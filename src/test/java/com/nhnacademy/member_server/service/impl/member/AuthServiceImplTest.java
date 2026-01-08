@@ -1,23 +1,11 @@
 package com.nhnacademy.member_server.service.impl.member;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
 import com.nhnacademy.member_server.dto.event.MemberLoginEvent;
 import com.nhnacademy.member_server.dto.event.MemberLogoutEvent;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
-import com.nhnacademy.member_server.entity.member.EmailType;
-import com.nhnacademy.member_server.entity.member.Grade;
-import com.nhnacademy.member_server.entity.member.Member;
-import com.nhnacademy.member_server.entity.member.Role;
-import com.nhnacademy.member_server.entity.member.Status;
+import com.nhnacademy.member_server.entity.member.*;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
@@ -26,9 +14,6 @@ import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
 import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.utils.Sha256Utils;
-import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +29,18 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {

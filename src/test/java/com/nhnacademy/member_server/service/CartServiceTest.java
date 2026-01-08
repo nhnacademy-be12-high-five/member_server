@@ -1,20 +1,5 @@
 package com.nhnacademy.member_server.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
 import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
 import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
 import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
@@ -31,12 +16,6 @@ import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.impl.CartServiceImpl;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +27,14 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+
+import java.util.*;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CartServiceTest {
@@ -406,5 +393,195 @@ class CartServiceTest {
 
         // 예외가 터져도 락은 해제되어야 함 (finally 블록)
         verify(luaRedisTemplate).delete(lockKey);
+    }
+    @Test
+    @DisplayName("migrateGuestCart - 입력값이 유효하지 않으면 실행되지 않음")
+    void migrateGuestCart_InvalidInput() {
+        // memberId가 null
+        cartService.migrateGuestCart("guest123", null);
+        // guestId가 null
+        cartService.migrateGuestCart(null, 1L);
+        // guestId가 빈 문자열
+        cartService.migrateGuestCart("", 1L);
+
+        // 아무런 Redis 동작도 일어나지 않아야 함
+        verify(luaRedisTemplate, never()).execute(any(), anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("migrateGuestCart - 게스트 장바구니가 없으면 병합하지 않음")
+    void migrateGuestCart_NoGuestCart() {
+        String guestId = "guest123";
+        Long memberId = 1L;
+        String guestKey = "cart:g:" + guestId;
+
+        given(luaRedisTemplate.hasKey(guestKey)).willReturn(false); // 게스트 키 없음
+
+        cartService.migrateGuestCart(guestId, memberId);
+
+        verify(luaRedisTemplate, never()).execute(any(), anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("migrateGuestCart - Lua Script 결과가 null이면 예외 발생")
+    void migrateGuestCart_ScriptError() {
+        String guestId = "guest123";
+        Long memberId = 1L;
+        String guestKey = "cart:g:" + guestId;
+        String memberKey = "cart:m:" + memberId;
+
+        given(luaRedisTemplate.hasKey(guestKey)).willReturn(true);
+        // Script 실행 결과가 null 반환하도록 설정
+        given(luaRedisTemplate.execute(eq(cartMergeScript), anyList(), any(), any()))
+                .willReturn(null);
+
+        assertThatThrownBy(() -> cartService.migrateGuestCart(guestId, memberId))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REDIS_SERVER_ERROR);
+    }
+    @Test
+    @DisplayName("deleteGuestCartOnly - guestId 없으면 무시, Redis 에러 시 예외")
+    void deleteGuestCartOnly_Tests() {
+        // 1. Null Input
+        cartService.deleteGuestCartOnly(null);
+        verify(luaRedisTemplate, never()).delete(anyString());
+
+        // 2. Redis Error
+        given(luaRedisTemplate.delete(anyString())).willThrow(new RuntimeException("Redis Fail"));
+        assertThatThrownBy(() -> cartService.deleteGuestCartOnly("guest123"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REDIS_SERVER_ERROR);
+    }
+
+    @Test
+    @DisplayName("deleteAllCartItemForOrder - 예외 발생 시 로그만 찍고 넘어감")
+    void deleteAllCartItemForOrder_ExceptionSwallowed() {
+        Long memberId = 1L;
+        // Redis delete 시 에러 발생 가정
+        given(luaRedisTemplate.delete(anyString())).willThrow(new RuntimeException("Redis Fail"));
+
+        // 예외가 던져지지 않아야 성공
+        cartService.deleteAllCartItemForOrder(memberId);
+
+        verify(luaRedisTemplate).delete(anyString());
+    }
+    @Test
+    @DisplayName("getCartItemList - 모두 null이면 빈 리스트 반환")
+    void getCartItemList_AllNull() {
+        CartListResponse response = cartService.getCartItemList(null, null);
+        assertThat(response.items()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getCartItemList - Redis 데이터 파싱 에러 처리 (NumberFormatException)")
+    void getCartItemList_ParsingError() {
+        Long memberId = 1L;
+        String key = "cart:m:1";
+
+        Map<Object, Object> redisMap = new HashMap<>();
+        redisMap.put("validId", "invalidQty"); // 수량이 숫자가 아님
+        redisMap.put("notANumber", "1");       // 책 ID가 숫자가 아님
+
+        given(hashOperations.entries(key)).willReturn(redisMap);
+
+        CartListResponse response = cartService.getCartItemList(memberId, null);
+
+        // 파싱 에러난 항목들은 무시되고 빈 리스트 반환되어야 함
+        assertThat(response.items()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getCartItemList - 비회원 장바구니 존재 여부 확인 (hasGuestCart)")
+    void getCartItemList_HasGuestCart() {
+        Long memberId = 1L;
+        String guestId = "guest123";
+        String key = "cart:m:1";
+
+        // 회원 장바구니 내용
+        Map<Object, Object> redisMap = Map.of("100", "1");
+        given(hashOperations.entries(key)).willReturn(redisMap);
+
+        // 비회원 장바구니 키 존재 여부 설정
+        given(luaRedisTemplate.hasKey("cart:g:" + guestId)).willReturn(true);
+
+        // Book Mock
+        GetBookResponse bookResponse = new GetBookResponse(100L, "Book", 1000, "img");
+        given(bookFeignClient.getBooksBulk(anyList())).willReturn(List.of(bookResponse));
+
+        CartListResponse response = cartService.getCartItemList(memberId, guestId);
+
+        assertThat(response.hasGuestCart()).isTrue();
+    }
+    @Test
+    @DisplayName("syncToDb - 회원이 존재하지 않으면 로그 찍고 종료")
+    void syncToDb_MemberNotFound() {
+        Long memberId = 999L;
+        String lockKey = "lock:cart:sync:999";
+
+        given(valueOperations.setIfAbsent(eq(lockKey), anyString(), anyLong(), any())).willReturn(true);
+        given(memberRepository.findById(memberId)).willReturn(Optional.empty());
+
+        cartService.syncToDb(memberId, new HashMap<>());
+
+        // 이후 로직 실행 안됨
+        verify(cartRepository, never()).findByMember_Id(anyLong());
+        // 락은 해제되어야 함
+        verify(luaRedisTemplate).delete(lockKey);
+    }
+
+    @Test
+    @DisplayName("syncToDb - Redis Map 데이터 파싱 중 에러 발생 시 해당 항목 스킵")
+    void syncToDb_MapParsingError() {
+        Long memberId = 1L;
+        String lockKey = "lock:cart:sync:1";
+
+        given(valueOperations.setIfAbsent(eq(lockKey), anyString(), anyLong(), any())).willReturn(true);
+        given(memberRepository.findById(memberId)).willReturn(Optional.of(mock(Member.class)));
+        given(cartRepository.findByMember_Id(memberId)).willReturn(Optional.of(mock(Cart.class)));
+
+        // Redis 데이터: 정상 1개, 에러 유발 2개
+        Map<Object, Object> redisItems = new HashMap<>();
+        redisItems.put("100", "5");          // 정상
+        redisItems.put("invalidId", "5");    // ID 파싱 에러
+        redisItems.put("101", "invalidQty"); // 수량 파싱 에러
+
+        cartService.syncToDb(memberId, redisItems);
+
+        // 정상인 100번만 저장되어야 함
+        verify(cartItemRepository).saveAll(argThat(list -> {
+            List<CartItem> items = (List<CartItem>) list;
+            return items.size() == 1 && items.get(0).getBookId() == 100L;
+        }));
+    }
+    @Test
+    @DisplayName("addToCart - Lua Script 결과가 -1이면(수량 초과 등) 예외 발생")
+    void addToCart_LuaReturnMinusOne() {
+        CartAddRequest request = new CartAddRequest(100L, 1);
+        given(luaRedisTemplate.execute(any(), anyList(), any(), any(), any(), any(), any()))
+                .willReturn(-1L);
+
+        assertThatThrownBy(() -> cartService.addToCart(request, 1L, null))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_QUANTITY);
+    }
+
+    @Test
+    @DisplayName("updateCartItemQuantity - 수량 범위 초과 시 예외")
+    void updateCartItemQuantity_InvalidQty() {
+        CartItemUpdateRequest request = new CartItemUpdateRequest(100L, 101); // MAX 100 초과
+
+        assertThatThrownBy(() -> cartService.updateCartItemQuantity(1L, null, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_QUANTITY);
+    }
+    @Test
+    @DisplayName("restoreCartOnLogin - 내부 로직 에러 발생 시 예외를 던지지 않음")
+    void restoreCartOnLogin_ExceptionSwallow() {
+        Long memberId = 1L;
+        // Redis 조회 시 에러 발생
+        given(luaRedisTemplate.hasKey(anyString())).willThrow(new RuntimeException("Error"));
+
+        // 예외가 발생하지 않아야 함
+        cartService.restoreCartOnLogin(memberId);
     }
 }
