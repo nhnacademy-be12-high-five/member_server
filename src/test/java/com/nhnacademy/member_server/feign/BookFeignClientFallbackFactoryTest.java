@@ -2,7 +2,7 @@ package com.nhnacademy.member_server.feign;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.nhnacademy.member_server.dto.cartResponse.GetBookResponse;
+import com.nhnacademy.member_server.dto.response.cart.GetBookResponse;
 import com.nhnacademy.member_server.feign.fallback.BookFeignClientFallbackFactory;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;

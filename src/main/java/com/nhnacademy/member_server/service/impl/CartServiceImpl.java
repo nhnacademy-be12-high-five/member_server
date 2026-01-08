@@ -1,14 +1,14 @@
 package com.nhnacademy.member_server.service.impl;
 
-import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
-import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
-import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartDetailResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
-import com.nhnacademy.member_server.dto.cartResponse.GetBookResponse;
-import com.nhnacademy.member_server.entity.cartEntity.Cart;
-import com.nhnacademy.member_server.entity.cartEntity.CartItem;
+import com.nhnacademy.member_server.dto.request.cart.CartAddRequest;
+import com.nhnacademy.member_server.dto.request.cart.CartItemUpdateRequest;
+import com.nhnacademy.member_server.dto.response.cart.CartAddResponse;
+import com.nhnacademy.member_server.dto.response.cart.CartDetailResponse;
+import com.nhnacademy.member_server.dto.response.cart.CartListResponse;
+import com.nhnacademy.member_server.dto.response.cart.CartUpdateResponse;
+import com.nhnacademy.member_server.dto.response.cart.GetBookResponse;
+import com.nhnacademy.member_server.entity.cart.Cart;
+import com.nhnacademy.member_server.entity.cart.CartItem;
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;

@@ -1,10 +1,10 @@
 package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.controller.swagger.PointInternalApi;
-import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
-import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
-import com.nhnacademy.member_server.dto.response.PointTransactionResponse;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.response.point.PointBalanceResponse;
+import com.nhnacademy.member_server.dto.response.point.PointTransactionResponse;
 import com.nhnacademy.member_server.service.PointService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

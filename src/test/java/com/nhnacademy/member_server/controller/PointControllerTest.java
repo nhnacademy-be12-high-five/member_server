@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
-import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
+import com.nhnacademy.member_server.dto.response.point.PointBalanceResponse;
+import com.nhnacademy.member_server.dto.response.point.PointHistoryResponse;
 import com.nhnacademy.member_server.service.PointService;
 import java.time.LocalDateTime;
 import java.util.List;

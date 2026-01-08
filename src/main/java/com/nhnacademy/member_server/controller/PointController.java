@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.controller.swagger.PointUserApi;
-import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
-import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
+import com.nhnacademy.member_server.dto.response.point.PointBalanceResponse;
+import com.nhnacademy.member_server.dto.response.point.PointHistoryResponse;
 import com.nhnacademy.member_server.service.PointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

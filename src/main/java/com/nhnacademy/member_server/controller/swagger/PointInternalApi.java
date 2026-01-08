@@ -1,9 +1,9 @@
 package com.nhnacademy.member_server.controller.swagger;
 
-import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
-import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
-import com.nhnacademy.member_server.dto.response.PointTransactionResponse;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionRequest;
+import com.nhnacademy.member_server.dto.response.point.PointBalanceResponse;
+import com.nhnacademy.member_server.dto.response.point.PointTransactionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

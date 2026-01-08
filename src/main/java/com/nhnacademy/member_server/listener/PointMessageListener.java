@@ -1,7 +1,7 @@
 package com.nhnacademy.member_server.listener;
 
-import com.nhnacademy.member_server.dto.request.PointEarnRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
+import com.nhnacademy.member_server.dto.request.point.PointEarnRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
 import com.nhnacademy.member_server.service.PointService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

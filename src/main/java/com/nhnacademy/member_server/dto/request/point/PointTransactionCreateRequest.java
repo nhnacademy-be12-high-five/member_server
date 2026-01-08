@@ -1,6 +1,6 @@
-package com.nhnacademy.member_server.dto.request;
+package com.nhnacademy.member_server.dto.request.point;
 
-import com.nhnacademy.member_server.entity.PointEventType;
+import com.nhnacademy.member_server.entity.point.PointEventType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

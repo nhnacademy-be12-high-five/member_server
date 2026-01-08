@@ -1,6 +1,6 @@
 package com.nhnacademy.member_server.feign;
 
-import com.nhnacademy.member_server.dto.cartResponse.GetBookResponse;
+import com.nhnacademy.member_server.dto.response.cart.GetBookResponse;
 import com.nhnacademy.member_server.feign.fallback.BookFeignClientFallbackFactory;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;

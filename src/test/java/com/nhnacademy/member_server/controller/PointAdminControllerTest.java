@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
-import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
-import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
+import com.nhnacademy.member_server.dto.request.point.PointAdminAdjustmentRequest;
+import com.nhnacademy.member_server.dto.request.point.PointAdminPolicyRequest;
+import com.nhnacademy.member_server.dto.response.point.PointAdminPolicyResponse;
 import com.nhnacademy.member_server.service.PointService;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;

@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.entity;
+package com.nhnacademy.member_server.entity.point;
 
 public enum PointStatus {
     RESERVED,   // 사용 예약 (차감 대기)

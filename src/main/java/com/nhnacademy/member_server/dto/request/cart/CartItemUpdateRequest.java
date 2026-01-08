@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto.cartRequest;
+package com.nhnacademy.member_server.dto.request.cart;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
