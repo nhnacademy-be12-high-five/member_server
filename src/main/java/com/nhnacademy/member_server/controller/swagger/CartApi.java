@@ -14,7 +14,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "10. Cart", description = "장바구니(회원/비회원) 관련 API")
 @RequestMapping("/api/cart")
@@ -30,7 +38,7 @@ public interface CartApi {
     ResponseEntity<CartAddResponse> addItemToCart(
             @RequestBody @Valid CartAddRequest request,
             @Parameter(hidden = true) @CookieValue(value = "guestCookie", required = false) String guestId,
-            @Parameter(hidden = true) @RequestHeader(name = "X-USER-ID", required = false) Long XId,
+            @Parameter(hidden = true) @RequestHeader(name = "X-USER-ID", required = false) Long memberId,
             HttpServletResponse httpResponse
     );
 

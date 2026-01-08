@@ -3,6 +3,8 @@ package com.nhnacademy.member_server.service.impl.social;
 import com.nhnacademy.member_server.dto.response.social.OAuth2UserInfo;
 import com.nhnacademy.member_server.dto.response.social.PaycoMemberResponse;
 import com.nhnacademy.member_server.dto.response.social.PaycoTokenResponse;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.feign.PaycoApiFeignClient;
 import com.nhnacademy.member_server.feign.PaycoAuthFeignClient;
 import com.nhnacademy.member_server.service.social.SocialLoginStrategy;
@@ -42,7 +44,7 @@ public class PaycoLoginStrategy implements SocialLoginStrategy {
         );
 
         if (tokenResponse == null || tokenResponse.getAccessToken() == null) {
-            throw new RuntimeException("PAYCO 토큰 발급 실패");
+            throw new BusinessException(ErrorCode.PAYCO_TOKEN_ISSUE_FAILED);
         }
 
         PaycoMemberResponse memberResponse = apiClient.getMemberInfo(
@@ -51,11 +53,11 @@ public class PaycoLoginStrategy implements SocialLoginStrategy {
         );
 
         if (memberResponse.getHeader() != null && memberResponse.getHeader().getResultCode() != 0) {
-            throw new RuntimeException("PAYCO API 오류: " + memberResponse.getHeader().getResultMessage());
+            throw new BusinessException(ErrorCode.PAYCO_API_ERROR);
         }
 
         if (memberResponse.getData() == null || memberResponse.getData().getMember() == null) {
-            throw new RuntimeException("PAYCO 회원 정보가 비어있습니다.");
+            throw new BusinessException(ErrorCode.PAYCO_MEMBER_INFO_EMPTY);
         }
 
         PaycoMemberResponse.PaycoMember memberData = memberResponse.getData().getMember();

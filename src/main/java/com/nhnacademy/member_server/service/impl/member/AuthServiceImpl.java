@@ -7,7 +7,12 @@ import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.dto.response.social.OAuth2UserInfo;
-import com.nhnacademy.member_server.entity.member.*;
+import com.nhnacademy.member_server.entity.member.EmailType;
+import com.nhnacademy.member_server.entity.member.Gender;
+import com.nhnacademy.member_server.entity.member.Grade;
+import com.nhnacademy.member_server.entity.member.Member;
+import com.nhnacademy.member_server.entity.member.Role;
+import com.nhnacademy.member_server.entity.member.Status;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
@@ -19,6 +24,10 @@ import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.service.social.SocialLoginFactory;
 import com.nhnacademy.member_server.service.social.SocialLoginStrategy;
 import com.nhnacademy.member_server.utils.Sha256Utils;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -31,11 +40,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -57,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Value("${jwt.refresh_expiration_time}")
     private Long refreshExpirationTime;
+    private static final String GENERAL_GRADE = "GENERAL";
 
     @Override
     @Transactional
@@ -124,9 +129,9 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
         }
 
-        Grade basicGrade = gradeRepository.findByGradeName("GENERAL")
+        Grade basicGrade = gradeRepository.findByGradeName(GENERAL_GRADE)
                 .orElseGet(() -> gradeRepository.save(Grade.builder()
-                        .gradeName("GENERAL")
+                        .gradeName(GENERAL_GRADE)
                         .min(0)
                         .pointRate(new BigDecimal("0.01"))
                         .max(100000)
@@ -254,9 +259,9 @@ public class AuthServiceImpl implements AuthService {
         String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
         String uniqueLoginId = provider + "_" + providerId;
 
-        Grade basicGrade = gradeRepository.findByGradeName("GENERAL")
+        Grade basicGrade = gradeRepository.findByGradeName(GENERAL_GRADE)
                 .orElseGet(() -> gradeRepository.save(
-                        Grade.builder().gradeName("GENERAL").min(0).pointRate(new BigDecimal("0.01")).build()
+                        Grade.builder().gradeName(GENERAL_GRADE).min(0).pointRate(new BigDecimal("0.01")).build()
                 ));
 
         String realName = (userInfo.getName() != null) ? userInfo.getName() : provider + " User";

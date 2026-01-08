@@ -1,8 +1,8 @@
 package com.nhnacademy.member_server.global.jwt;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
 
 class WebUtilsTest {
 
@@ -32,6 +32,6 @@ class WebUtilsTest {
     @Test
     void getToken_Empty() {
         String result = WebUtils.getToken("");
-        assertThat(result).isEqualTo("");
+        assertThat(result).isEmpty();
     }
 }

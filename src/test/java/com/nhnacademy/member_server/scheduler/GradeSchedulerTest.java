@@ -1,11 +1,24 @@
 package com.nhnacademy.member_server.scheduler;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.member.Status;
 import com.nhnacademy.member_server.feign.OrderFeignClient;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,17 +30,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class GradeSchedulerTest {
@@ -64,11 +66,11 @@ class GradeSchedulerTest {
         given(gradeRepository.findAll()).willReturn(grades);
 
         Pageable pageable0 = PageRequest.of(0, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable0)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable0)))
                 .willReturn(new PageImpl<>(List.of(member)));
 
         Pageable pageable1 = PageRequest.of(1, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable1)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable1)))
                 .willReturn(Page.empty());
 
         Map<Long, Long> orderStats = Map.of(1L, 150000L);
@@ -102,11 +104,11 @@ class GradeSchedulerTest {
         given(gradeRepository.findAll()).willReturn(grades);
 
         Pageable pageable0 = PageRequest.of(0, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable0)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable0)))
                 .willReturn(new PageImpl<>(List.of(member)));
 
         Pageable pageable1 = PageRequest.of(1, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable1)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable1)))
                 .willReturn(Page.empty());
 
         Map<Long, Long> orderStats = Map.of(1L, 50000L);
@@ -139,11 +141,11 @@ class GradeSchedulerTest {
         given(gradeRepository.findAll()).willReturn(grades);
 
         Pageable pageable0 = PageRequest.of(0, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable0)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable0)))
                 .willReturn(new PageImpl<>(List.of(member)));
 
         Pageable pageable1 = PageRequest.of(1, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable1)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable1)))
                 .willReturn(Page.empty());
 
         given(orderClient.getBulkTotalAmounts(any(), any()))
@@ -175,11 +177,11 @@ class GradeSchedulerTest {
         given(gradeRepository.findAll()).willReturn(grades);
 
         Pageable pageable0 = PageRequest.of(0, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable0)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable0)))
                 .willReturn(new PageImpl<>(List.of(member)));
 
         Pageable pageable1 = PageRequest.of(1, 1000);
-        given(memberRepository.findAllByStatus(eq(Status.ACTIVE), eq(pageable1)))
+        given(memberRepository.findAllByStatus((Status.ACTIVE), (pageable1)))
                 .willReturn(Page.empty());
 
         given(orderClient.getBulkTotalAmounts(any(), any()))

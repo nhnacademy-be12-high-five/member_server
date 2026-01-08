@@ -1,9 +1,14 @@
 package com.nhnacademy.member_server.service.impl;
 
+import static com.nhnacademy.member_server.exception.ErrorCode.INVALID_INPUT_VALUE;
+import static com.nhnacademy.member_server.exception.ErrorCode.MEMBER_NOT_FOUND;
+import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ENOUGH;
+import static com.nhnacademy.member_server.exception.ErrorCode.POINT_NOT_ORDER_ID;
+import static com.nhnacademy.member_server.exception.ErrorCode.POINT_POLICY_NOT_FOUND;
+
 import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
 import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
 import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionRequest;
 import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
 import com.nhnacademy.member_server.dto.response.PointBalanceResponse;
 import com.nhnacademy.member_server.dto.response.PointHistoryResponse;
@@ -18,16 +23,13 @@ import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.repository.PointHistoryRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.PointService;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-
-import static com.nhnacademy.member_server.exception.ErrorCode.*;
 
 @Service
 @RequiredArgsConstructor
@@ -338,36 +340,6 @@ public class PointServiceImpl implements PointService {
         createTransaction(refundRequest);
 
         log.info("TCC Cancel(환불) 완료: memberId={}, orderId={}", memberId, orderId);
-    }
-
-    // TCC 예약 전용 헬퍼 메서드
-    private void processUsePointForTcc(PointTransactionRequest requestDto) {
-        if (requestDto.getOrderId() == null) throw new BusinessException(POINT_NOT_ORDER_ID);
-        if (requestDto.getAmount() == null || requestDto.getAmount() <= 0) throw new BusinessException(INVALID_INPUT_VALUE);
-
-        Member member = memberRepository.findByIdForUpdate(requestDto.getMemberId())
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-
-        long amountUsedPoint = requestDto.getAmount();
-        if (member.getCurrentPoint() < amountUsedPoint) {
-            throw new BusinessException(POINT_NOT_ENOUGH);
-        }
-
-        long newPointBalance = member.getCurrentPoint() - amountUsedPoint;
-        member.setCurrentPoint(newPointBalance);
-
-        String description = formatDescription(PointEventType.USE_ORDER, requestDto.getOrderId());
-
-        // 생성자 호출 대신 builder로 통일 (originalPointHistoryId 생략 시 null 처리됨)
-        pointHistoryRepository.save(PointHistory.builder()
-                .orderId(requestDto.getOrderId())
-                .member(member)
-                .amount(-amountUsedPoint)
-                .description(description)
-                .pointEventType(PointEventType.USE_ORDER)
-                .pointBalance(newPointBalance)
-                .status(PointStatus.RESERVED)
-                .build());
     }
 
     // 공통 포인트 차감 로직

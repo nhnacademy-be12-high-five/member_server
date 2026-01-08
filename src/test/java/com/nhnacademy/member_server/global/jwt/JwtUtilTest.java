@@ -1,17 +1,16 @@
 package com.nhnacademy.member_server.global.jwt;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.nhnacademy.member_server.entity.member.Role;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class JwtUtilTest {
 
@@ -58,8 +57,9 @@ class JwtUtilTest {
         String token = jwtUtil.createAccessToken(1L, Role.USER);
         long remainingTime = jwtUtil.getRemainingTime(token);
 
-        assertThat(remainingTime).isGreaterThan(0);
-        assertThat(remainingTime).isLessThanOrEqualTo(accessTime);
+        assertThat(remainingTime)
+                .isPositive()
+                .isLessThanOrEqualTo(accessTime);
     }
 
     @Test
@@ -109,6 +109,6 @@ class JwtUtilTest {
     @Test
     void getRemainingTime_Fail_InvalidToken() {
         long time = jwtUtil.getRemainingTime("invalid.token");
-        assertThat(time).isEqualTo(0);
+        assertThat(time).isZero();
     }
 }
