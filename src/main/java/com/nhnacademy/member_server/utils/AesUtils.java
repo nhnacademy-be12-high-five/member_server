@@ -1,14 +1,15 @@
 package com.nhnacademy.member_server.utils;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 @Component
 public class AesUtils {
@@ -41,7 +42,7 @@ public class AesUtils {
 
             return Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
-            throw new RuntimeException("Encryption failed", e);
+            throw new BusinessException(ErrorCode.ENCRYPTION_FAILED);
         }
     }
 
@@ -65,7 +66,7 @@ public class AesUtils {
 
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new RuntimeException("Decryption failed", e);
+            throw new BusinessException(ErrorCode.DECRYPTION_FAILED);
         }
     }
 }

@@ -64,7 +64,22 @@ public enum ErrorCode {
     MEMBER_NOT_DORMANT(HttpStatus.BAD_REQUEST, "M013", "해당 계정은 휴면 상태가 아닙니다."),
 
     // [Email]
-    MAIL_SEND_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E001", "메일 발송 중 오류가 발생했습니다.");
+    MAIL_SEND_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E001", "메일 발송 중 오류가 발생했습니다."),
+
+
+    // [PAYCO]
+    PAYCO_TOKEN_ISSUE_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "EXT010", "PAYCO 토큰 발급에 실패했습니다."),
+    PAYCO_API_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "EXT011", "PAYCO API 호출 중 오류가 발생했습니다."),
+    PAYCO_MEMBER_INFO_EMPTY(HttpStatus.BAD_GATEWAY, "EXT012", "PAYCO 회원 정보가 정상적으로 전달되지 않았습니다."),
+
+    // [Encryption]
+    ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E002", "암호화 처리 중 오류가 발생했습니다."),
+    DECRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E003", "복호화 처리 중 오류가 발생했습니다."),
+
+    // [SHA-256]
+    SHA256_ALGORITHM_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "E004", "SHA-256 알고리즘을 찾을 수 없습니다."),
+    SHA256_ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E005", "SHA-256 암호화 중 오류가 발생했습니다.");
+
 
     private final HttpStatus status;
     private final String code;
