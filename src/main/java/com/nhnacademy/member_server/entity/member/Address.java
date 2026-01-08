@@ -31,36 +31,36 @@ public class Address {
     private Long id;
 
     @Setter
-    @Column(length = 50)
+    @Column(length = 50, nullable = false)
     private String alias;
 
     @Setter
-    @Column(length = 255)
+    @Column(length = 255, nullable = false)
     @Convert(converter = EncryptConverter.class)
     private String recipient;
 
     @Setter
-    @Column(length = 255)
+    @Column(length = 255, nullable = false)
     @Convert(converter = EncryptConverter.class)
     private String phone;
 
 
     @Setter
-    @Column(name = "zip_code", length = 10)
+    @Column(name = "zip_code", length = 10, nullable = false)
     private String zipCode;
 
     @Setter
-    @Column(name = "road_address", length = 255)
+    @Column(name = "road_address", length = 255, nullable = false)
     @Convert(converter = EncryptConverter.class)
     private String roadAddress;
 
     @Setter
-    @Column(name = "detail_address", length = 255)
+    @Column(name = "detail_address", length = 255, nullable = false)
     @Convert(converter = EncryptConverter.class)
     private String detailAddress;
 
     @Setter
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id")
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 }
