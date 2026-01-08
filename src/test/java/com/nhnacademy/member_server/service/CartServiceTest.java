@@ -1,13 +1,28 @@
 package com.nhnacademy.member_server.service;
 
-import com.nhnacademy.member_server.dto.cartRequest.CartAddRequest;
-import com.nhnacademy.member_server.dto.cartRequest.CartItemUpdateRequest;
-import com.nhnacademy.member_server.dto.cartResponse.CartAddResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartListResponse;
-import com.nhnacademy.member_server.dto.cartResponse.CartUpdateResponse;
-import com.nhnacademy.member_server.dto.cartResponse.GetBookResponse;
-import com.nhnacademy.member_server.entity.cartEntity.Cart;
-import com.nhnacademy.member_server.entity.cartEntity.CartItem;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import com.nhnacademy.member_server.dto.request.cart.CartAddRequest;
+import com.nhnacademy.member_server.dto.request.cart.CartItemUpdateRequest;
+import com.nhnacademy.member_server.dto.response.cart.CartAddResponse;
+import com.nhnacademy.member_server.dto.response.cart.CartListResponse;
+import com.nhnacademy.member_server.dto.response.cart.CartUpdateResponse;
+import com.nhnacademy.member_server.dto.response.cart.GetBookResponse;
+import com.nhnacademy.member_server.entity.cart.Cart;
+import com.nhnacademy.member_server.entity.cart.CartItem;
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
@@ -16,6 +31,12 @@ import com.nhnacademy.member_server.repository.CartItemRepository;
 import com.nhnacademy.member_server.repository.CartRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.impl.CartServiceImpl;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,14 +48,6 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
-
-import java.util.*;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CartServiceTest {
@@ -88,7 +101,6 @@ class CartServiceTest {
         // given
         Long memberId = 1L;
         CartAddRequest request = new CartAddRequest(100L, 2);
-        String key = "cart:m:1";
 
         given(luaRedisTemplate.execute(eq(cartUpsertScript), anyList(), any(), any(), any(), any(), any()))
                 .willReturn(5L); // 현재 수량 5로 가정
@@ -255,7 +267,7 @@ class CartServiceTest {
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.totalCartPrice()).isEqualTo(20000);
-        assertThat(result.items().get(0).title()).isEqualTo("Java Book");
+        assertThat(result.items().getFirst().title()).isEqualTo("Java Book");
     }
 
     @Test
@@ -337,12 +349,12 @@ class CartServiceTest {
         verify(cartItemRepository).deleteAllInBatch(argThat(iterable -> {
             List<CartItem> list = (List<CartItem>) iterable;
 
-            return list.size() == 1 && list.get(0).getBookId().equals(102L);
+            return list.size() == 1 && list.getFirst().getBookId().equals(102L);
         }));
 
         verify(cartItemRepository).saveAll(argThat(iterable -> {
             List<CartItem> list = (List<CartItem>) iterable;
-            return list.size() == 1 && list.get(0).getBookId().equals(101L);
+            return list.size() == 1 && list.getFirst().getBookId().equals(101L);
         }));
 
         // E. 락 해제 확인
@@ -428,7 +440,6 @@ class CartServiceTest {
         String guestId = "guest123";
         Long memberId = 1L;
         String guestKey = "cart:g:" + guestId;
-        String memberKey = "cart:m:" + memberId;
 
         given(luaRedisTemplate.hasKey(guestKey)).willReturn(true);
         // Script 실행 결과가 null 반환하도록 설정
@@ -550,7 +561,7 @@ class CartServiceTest {
         // 정상인 100번만 저장되어야 함
         verify(cartItemRepository).saveAll(argThat(list -> {
             List<CartItem> items = (List<CartItem>) list;
-            return items.size() == 1 && items.get(0).getBookId() == 100L;
+            return items.size() == 1 && items.getFirst().getBookId() == 100L;
         }));
     }
     @Test

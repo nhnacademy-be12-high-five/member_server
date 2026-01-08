@@ -1,11 +1,12 @@
 package com.nhnacademy.member_server.utils;
 
-import org.springframework.stereotype.Component;
-
+import com.nhnacademy.member_server.exception.BusinessException;
+import com.nhnacademy.member_server.exception.ErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import org.springframework.stereotype.Component;
 
 @Component
 public class Sha256Utils {
@@ -16,7 +17,9 @@ public class Sha256Utils {
             md.update(text.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(md.digest());
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not found", e);
+            throw new BusinessException(ErrorCode.SHA256_ALGORITHM_NOT_FOUND);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SHA256_ENCRYPTION_FAILED);
         }
     }
 }

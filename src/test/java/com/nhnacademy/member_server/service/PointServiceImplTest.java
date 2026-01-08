@@ -1,20 +1,29 @@
 package com.nhnacademy.member_server.service;
 
-import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
-import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
-import com.nhnacademy.member_server.dto.request.PointTransactionCreateRequest;
-import com.nhnacademy.member_server.entity.PointEventType;
-import com.nhnacademy.member_server.entity.PointHistory;
-import com.nhnacademy.member_server.entity.PointPolicy;
-import com.nhnacademy.member_server.entity.PointStatus;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
+
+import com.nhnacademy.member_server.dto.request.point.PointAdminAdjustmentRequest;
+import com.nhnacademy.member_server.dto.request.point.PointAdminPolicyRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
 import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.entity.member.Member;
+import com.nhnacademy.member_server.entity.point.PointEventType;
+import com.nhnacademy.member_server.entity.point.PointHistory;
+import com.nhnacademy.member_server.entity.point.PointPolicy;
+import com.nhnacademy.member_server.entity.point.PointStatus;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.repository.PointHistoryRepository;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.impl.PointServiceImpl;
+import java.math.BigDecimal;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,16 +33,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.math.BigDecimal;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class PointServiceImplTest {

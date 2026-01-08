@@ -6,15 +6,14 @@ import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.utils.Sha256Utils;
+import java.security.SecureRandom;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-
-import java.security.SecureRandom;
-import java.time.Duration;
 
 @Slf4j
 @Service
@@ -25,7 +24,6 @@ public class EmailServiceImpl implements EmailService {
     private final StringRedisTemplate redisTemplate;
     private final MemberRepository memberRepository;
 
-    private static final long LIMIT_TIME = 3 * 60;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final Sha256Utils sha256Utils;
@@ -76,7 +74,7 @@ public class EmailServiceImpl implements EmailService {
 
         if (type == EmailType.SIGNUP) {
             message.setSubject("[HighFive] 회원가입 인증번호");
-            message.setText("회원가입을 위한 인증 번호는 [" + code + "] 입니다.\n3분 내에 입력해 주세요.");
+            message.setText("회원가입을 위한 인증 번호는 [" + code + "] 입니다.\n5분 내에 입력해 주세요.");
         } else if (type == EmailType.RESET_PASSWORD) {
             message.setSubject("[HighFive] 비밀번호 재설정 인증번호");
             message.setText("비밀번호 재설정을 위한 인증 번호는 [" + code + "] 입니다.\n타인에게 노출되지 않도록 주의하세요.");
@@ -86,7 +84,7 @@ public class EmailServiceImpl implements EmailService {
         }
         else if (type == EmailType.ACTIVATE) {
             message.setSubject("[HighFive] 휴면 계정 활성화 인증번호");
-            message.setText("휴면 해제를 위한 인증 번호는 [" + code + "] 입니다.\n3분 내에 입력해 주세요.");
+            message.setText("휴면 해제를 위한 인증 번호는 [" + code + "] 입니다.\n5분 내에 입력해 주세요.");
         }
 
         try {

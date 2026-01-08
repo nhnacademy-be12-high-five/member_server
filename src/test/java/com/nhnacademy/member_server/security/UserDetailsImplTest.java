@@ -1,14 +1,13 @@
 package com.nhnacademy.member_server.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.entity.member.Status;
+import java.util.Collection;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
-
-import java.util.Collection;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class UserDetailsImplTest {
 

@@ -1,4 +1,4 @@
-package com.nhnacademy.member_server.dto.cartResponse;
+package com.nhnacademy.member_server.dto.response.cart;
 
 import java.util.List;
 

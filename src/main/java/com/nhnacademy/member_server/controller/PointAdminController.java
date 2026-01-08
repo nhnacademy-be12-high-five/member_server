@@ -1,14 +1,18 @@
 package com.nhnacademy.member_server.controller;
 
 import com.nhnacademy.member_server.controller.swagger.PointAdminApi;
-import com.nhnacademy.member_server.dto.request.PointAdminAdjustmentRequest;
-import com.nhnacademy.member_server.dto.request.PointAdminPolicyRequest;
-import com.nhnacademy.member_server.dto.response.PointAdminPolicyResponse;
-import com.nhnacademy.member_server.dto.response.PointTransactionResponse;
+import com.nhnacademy.member_server.dto.request.point.PointAdminAdjustmentRequest;
+import com.nhnacademy.member_server.dto.request.point.PointAdminPolicyRequest;
+import com.nhnacademy.member_server.dto.response.point.PointAdminPolicyResponse;
+import com.nhnacademy.member_server.dto.response.point.PointTransactionResponse;
 import com.nhnacademy.member_server.service.PointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/admin/points")
