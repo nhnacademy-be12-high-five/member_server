@@ -3,6 +3,7 @@ package com.nhnacademy.member_server.config;
 import com.nhnacademy.member_server.entity.point.PointPolicy;
 import com.nhnacademy.member_server.repository.PointPolicyRepository;
 import com.nhnacademy.member_server.service.GradeInitService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Profile;
 
 @Configuration
 @Profile("!test")
+@Slf4j
 public class InitDataConfig {
 
     @Bean
@@ -32,7 +34,7 @@ public class InitDataConfig {
             gradeInitService.createGradeIfNotExists("GOLD", 200000, 300000, "0.025");
             gradeInitService.createGradeIfNotExists("PLATINUM", 300000, null, "0.03");
 
-            System.out.println(">>> [INIT] 등급 데이터 점검 및 초기화 완료");
+            log.info(">>> [INIT] 등급 데이터 점검 및 초기화 완료");
         };
     }
 }

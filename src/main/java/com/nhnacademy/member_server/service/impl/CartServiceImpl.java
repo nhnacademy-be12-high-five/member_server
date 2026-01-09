@@ -551,7 +551,6 @@ public class CartServiceImpl implements CartService {
 
     // 로그아웃 시 사용할 껍데기 메서드
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void syncToDb(Long memberId) {
         if (memberId == null) return;
 
