@@ -5,6 +5,7 @@ import com.nhnacademy.member_server.dto.event.MemberLogoutEvent;
 import com.nhnacademy.member_server.dto.message.CouponIssueMessage;
 import com.nhnacademy.member_server.dto.request.member.MemberCreateRequest;
 import com.nhnacademy.member_server.dto.request.member.PasswordResetRequest;
+import com.nhnacademy.member_server.dto.request.point.PointTransactionCreateRequest;
 import com.nhnacademy.member_server.dto.response.member.TokenDto;
 import com.nhnacademy.member_server.dto.response.social.OAuth2UserInfo;
 import com.nhnacademy.member_server.entity.member.EmailType;
@@ -13,12 +14,14 @@ import com.nhnacademy.member_server.entity.member.Grade;
 import com.nhnacademy.member_server.entity.member.Member;
 import com.nhnacademy.member_server.entity.member.Role;
 import com.nhnacademy.member_server.entity.member.Status;
+import com.nhnacademy.member_server.entity.point.PointEventType;
 import com.nhnacademy.member_server.exception.BusinessException;
 import com.nhnacademy.member_server.exception.ErrorCode;
 import com.nhnacademy.member_server.global.jwt.JwtUtil;
 import com.nhnacademy.member_server.repository.GradeRepository;
 import com.nhnacademy.member_server.repository.MemberRepository;
 import com.nhnacademy.member_server.security.UserDetailsImpl;
+import com.nhnacademy.member_server.service.PointService;
 import com.nhnacademy.member_server.service.member.AuthService;
 import com.nhnacademy.member_server.service.member.EmailService;
 import com.nhnacademy.member_server.service.social.SocialLoginFactory;
@@ -56,6 +59,7 @@ public class AuthServiceImpl implements AuthService {
     private final SocialLoginFactory socialLoginFactory;
     private final EmailService emailService;
     private final ApplicationEventPublisher eventPublisher;
+    private final PointService pointService;
 
     private final Sha256Utils sha256Utils;
 
@@ -159,14 +163,8 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         Member savedMember = memberRepository.save(member);
-
-        try {
-            CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
-            rabbitTemplate.convertAndSend("high-five-coupon-welcome-queue", message);
-            log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
-        } catch (Exception e) {
-            log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
-        }
+        processSignupPoint(savedMember);
+        processWelcomeCoupon(savedMember);
     }
 
     @Override
@@ -316,14 +314,8 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         Member savedMember = memberRepository.save(member);
-
-        try {
-            CouponIssueMessage message = new CouponIssueMessage(savedMember.getId());
-            rabbitTemplate.convertAndSend("high-five-coupon-welcome-queue", message);
-            log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", savedMember.getId());
-        }catch (Exception e){
-            log.error("웰컴 쿠폰 메시지 발행 실패: {}", e.getMessage());
-        }
+        processSignupPoint(savedMember);
+        processWelcomeCoupon(savedMember);
 
         return savedMember;
     }
@@ -385,5 +377,27 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return loginId.substring(0, 2) + "*".repeat(len - 2);
+    }
+
+    private void processSignupPoint(Member member) {
+        try {
+            pointService.createTransaction(PointTransactionCreateRequest.builder()
+                    .memberId(member.getId())
+                    .pointEventType(PointEventType.EARN_SIGNUP)
+                    .build());
+            log.info("신규 회원({}) 회원가입 포인트 적립 완료", member.getId());
+        } catch (Exception e) {
+            log.error("회원가입 포인트 적립 실패 (memberId={}): {}", member.getId(), e.getMessage());
+        }
+    }
+
+    private void processWelcomeCoupon(Member member) {
+        try {
+            CouponIssueMessage message = new CouponIssueMessage(member.getId());
+            rabbitTemplate.convertAndSend("high-five-coupon-welcome-queue", message);
+            log.info("신규 회원({}) 웰컴 쿠폰 지급 메시지 발행 완료", member.getId());
+        } catch (Exception e) {
+            log.error("웰컴 쿠폰 메시지 발행 실패 (memberId={}): {}", member.getId(), e.getMessage());
+        }
     }
 }
