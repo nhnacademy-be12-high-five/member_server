@@ -70,7 +70,7 @@ public class Member {
     private String phone;
 
     @Setter
-    @Column(name = "phone_hash", length = 64)
+    @Column(name = "phone_hash", unique = true, length = 64)
     private String phoneHash;
 
     @Setter
@@ -80,7 +80,7 @@ public class Member {
     private String email;
 
     @Setter
-    @Column(name = "email_hash", length = 64)
+    @Column(name = "email_hash", unique = true, length = 64)
     private String emailHash;
 
     @Setter
